@@ -1,0 +1,177 @@
+# Copyright (C) 2026 ${GITHUB_USER}
+# This file is distributed under the same license as the openmediavault-immich package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: openmediavault-immich 8.0.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-04 12:00+0800\n"
+"PO-Revision-Date: 2026-10-04 12:00+0800\n"
+"Last-Translator: ${GITHUB_USER}\n"
+"Language-Team: Chinese (Simplified)\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Immich"
+msgstr "Immich"
+
+msgid "Settings"
+msgstr "设置"
+
+msgid "Updated Immich settings."
+msgstr "Immich 设置已更新。"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "Partial"
+msgstr "部分运行"
+
+msgid "Immich is a self-hosted photo and video backup solution. Save the settings, click Apply to render the Compose files, then use the buttons below to deploy and manage the stack. While the stack is running it starts automatically at boot."
+msgstr "Immich 是自托管照片/视频备份方案。先保存设置，点「应用」渲染 Compose 文件，再用下方按钮部署和管理栈。栈运行期间开机自动启动。"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Service status"
+msgstr "服务状态"
+
+msgid "Running version"
+msgstr "运行版本"
+
+msgid "Latest version"
+msgstr "最新版本"
+
+msgid "Update available"
+msgstr "有可用更新"
+
+msgid "Generated compose file"
+msgstr "生成的 Compose 文件"
+
+msgid "Service"
+msgstr "服务"
+
+msgid "Enabled"
+msgstr "启用"
+
+msgid "Automatically manage the stack from OMV. On Apply the Compose files are rendered and, when the settings changed, the stack is recreated. Disabling the service removes the containers on Apply (photos and database are kept)."
+msgstr "由 OMV 自动管理栈：点「应用」渲染 Compose 文件，设置有变化时自动重建栈。停用服务会在「应用」时移除容器（照片与数据库保留）。"
+
+msgid "Version"
+msgstr "版本"
+
+msgid "Immich version tag"
+msgstr "Immich 版本标签"
+
+msgid "Docker image tag for immich-server and the machine-learning service (e.g. release or v3.2.4). 'release' follows the latest stable release. Prefer pinning a specific version; upgrade with the Upgrade button or change the tag here and Apply."
+msgstr "immich-server 与机器学习服务的 Docker 镜像标签（如 release 或 v3.2.4）。'release' 跟随最新稳定版。建议固定具体版本；升级请用「升级」按钮，或改标签后点「应用」。"
+
+msgid "Enable machine learning"
+msgstr "启用机器学习"
+
+msgid "Adds the immich-machine-learning container for face recognition, smart search and OCR. Requires 4 GB+ of RAM in addition to the base stack."
+msgstr "添加 immich-machine-learning 容器，提供人脸识别、智能搜索与 OCR。在基础栈之外需要 4 GB 以上内存。"
+
+msgid "Storage"
+msgstr "存储"
+
+msgid "Compose directory"
+msgstr "Compose 目录"
+
+msgid "Directory where .env and docker-compose.yml are rendered. The stack is started from here."
+msgstr ".env 与 docker-compose.yml 的渲染目录。栈从此目录启动。"
+
+msgid "Upload location"
+msgstr "照片存储目录"
+
+msgid "Host directory where photos and videos are stored (container path /data). Must be on a local filesystem."
+msgstr "照片/视频的宿主机存储目录（容器内路径 /data）。必须位于本地文件系统。"
+
+msgid "Database location"
+msgstr "数据库目录"
+
+msgid "Host directory for the PostgreSQL data. Must be on a local filesystem (NFS/SMB/CIFS shares are not supported by Immich)."
+msgstr "PostgreSQL 数据的宿主机目录。必须位于本地文件系统（Immich 不支持 NFS/SMB/CIFS 网络共享）。"
+
+msgid "Database"
+msgstr "数据库"
+
+msgid "Database password"
+msgstr "数据库密码"
+
+msgid "Postgres password, generated automatically on plugin installation. Changing it after the first deployment requires resetting the database directory."
+msgstr "Postgres 密码，安装插件时自动生成。首次部署后修改密码需重置数据库目录。"
+
+msgid "Database username"
+msgstr "数据库用户名"
+
+msgid "Database name"
+msgstr "数据库名"
+
+msgid "Network"
+msgstr "网络"
+
+msgid "Web port"
+msgstr "Web 端口"
+
+msgid "Port of the Immich web interface (container port is fixed at 2283)."
+msgstr "Immich 网页界面端口（容器内端口固定为 2283）。"
+
+msgid "Timezone"
+msgstr "时区"
+
+msgid "Timezone used inside the containers, e.g. Asia/Shanghai."
+msgstr "容器内使用的时区，如 Asia/Shanghai。"
+
+msgid "Start"
+msgstr "启动"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Restart"
+msgstr "重启"
+
+msgid "Upgrade"
+msgstr "升级"
+
+msgid "View logs"
+msgstr "查看日志"
+
+msgid "View compose file"
+msgstr "查看 Compose 文件"
+
+msgid "Open Immich"
+msgstr "打开 Immich"
+
+msgid "Do you really want to stop the Immich stack? The containers are removed; photos, database and settings are kept."
+msgstr "确实要停止 Immich 栈吗？容器将被移除；照片、数据库与设置保留。"
+
+msgid "Do you really want to restart the Immich stack?"
+msgstr "确实要重启 Immich 栈吗？"
+
+msgid "Do you really want to upgrade the Immich stack? Newer images are pulled and the stack is recreated. Read the upstream release notes before major upgrades."
+msgstr "确实要升级 Immich 栈吗？将拉取新镜像并重建栈。大版本升级前请先阅读上游发布说明。"
+
+msgid "Immich deploy/start output"
+msgstr "Immich 部署/启动输出"
+
+msgid "Immich stop output"
+msgstr "Immich 停止输出"
+
+msgid "Immich restart output"
+msgstr "Immich 重启输出"
+
+msgid "Immich upgrade output"
+msgstr "Immich 升级输出"
+
+msgid "Immich logs"
+msgstr "Immich 日志"
+
+msgid "Rendered docker-compose.yml"
+msgstr "渲染出的 docker-compose.yml"

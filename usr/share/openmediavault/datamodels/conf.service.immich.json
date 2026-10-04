@@ -1,0 +1,57 @@
+{
+	"type": "config",
+	"id": "conf.service.immich",
+	"title": "Immich",
+	"queryinfo": {
+		"xpath": ".//services/immich",
+		"iterable": false
+	},
+	"properties": {
+		"enable": {
+			"type": "boolean",
+			"default": false
+		},
+		"version": {
+			"type": "string",
+			"default": "release"
+		},
+		"port": {
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 65535,
+			"default": 2283
+		},
+		"timeZone": {
+			"type": "string",
+			"default": "Etc/UTC"
+		},
+		"composeDir": {
+			"type": "string",
+			"default": "/srv/docker/immich"
+		},
+		"uploadLocation": {
+			"type": "string",
+			"default": "/srv/docker/immich/upload"
+		},
+		"dbDataLocation": {
+			"type": "string",
+			"default": "/srv/docker/immich/db"
+		},
+		"dbPassword": {
+			"type": "string",
+			"default": ""
+		},
+		"dbUsername": {
+			"type": "string",
+			"default": "postgres"
+		},
+		"dbDatabaseName": {
+			"type": "string",
+			"default": "immich"
+		},
+		"mlEnable": {
+			"type": "boolean",
+			"default": false
+		}
+	}
+}

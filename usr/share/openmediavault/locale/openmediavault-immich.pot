@@ -1,0 +1,178 @@
+# Translation template for openmediavault-immich.
+# Copyright (C) 2026 ${GITHUB_USER}
+# This file is distributed under the same license as the openmediavault-immich package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: openmediavault-immich 8.0.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-04 12:00+0800\n"
+"PO-Revision-Date: 2026-10-04 12:00+0800\n"
+"Last-Translator: ${GITHUB_USER}\n"
+"Language-Team: \n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Immich"
+msgstr ""
+
+msgid "Settings"
+msgstr ""
+
+msgid "Updated Immich settings."
+msgstr ""
+
+msgid "Running"
+msgstr ""
+
+msgid "Stopped"
+msgstr ""
+
+msgid "Partial"
+msgstr ""
+
+msgid "Immich is a self-hosted photo and video backup solution. Save the settings, click Apply to render the Compose files, then use the buttons below to deploy and manage the stack. While the stack is running it starts automatically at boot."
+msgstr ""
+
+msgid "Status"
+msgstr ""
+
+msgid "Service status"
+msgstr ""
+
+msgid "Running version"
+msgstr ""
+
+msgid "Latest version"
+msgstr ""
+
+msgid "Update available"
+msgstr ""
+
+msgid "Generated compose file"
+msgstr ""
+
+msgid "Service"
+msgstr ""
+
+msgid "Enabled"
+msgstr ""
+
+msgid "Automatically manage the stack from OMV. On Apply the Compose files are rendered and, when the settings changed, the stack is recreated. Disabling the service removes the containers on Apply (photos and database are kept)."
+msgstr ""
+
+msgid "Version"
+msgstr ""
+
+msgid "Immich version tag"
+msgstr ""
+
+msgid "Docker image tag for immich-server and the machine-learning service (e.g. release or v3.2.4). 'release' follows the latest stable release. Prefer pinning a specific version; upgrade with the Upgrade button or change the tag here and Apply."
+msgstr ""
+
+msgid "Enable machine learning"
+msgstr ""
+
+msgid "Adds the immich-machine-learning container for face recognition, smart search and OCR. Requires 4 GB+ of RAM in addition to the base stack."
+msgstr ""
+
+msgid "Storage"
+msgstr ""
+
+msgid "Compose directory"
+msgstr ""
+
+msgid "Directory where .env and docker-compose.yml are rendered. The stack is started from here."
+msgstr ""
+
+msgid "Upload location"
+msgstr ""
+
+msgid "Host directory where photos and videos are stored (container path /data). Must be on a local filesystem."
+msgstr ""
+
+msgid "Database location"
+msgstr ""
+
+msgid "Host directory for the PostgreSQL data. Must be on a local filesystem (NFS/SMB/CIFS shares are not supported by Immich)."
+msgstr ""
+
+msgid "Database"
+msgstr ""
+
+msgid "Database password"
+msgstr ""
+
+msgid "Postgres password, generated automatically on plugin installation. Changing it after the first deployment requires resetting the database directory."
+msgstr ""
+
+msgid "Database username"
+msgstr ""
+
+msgid "Database name"
+msgstr ""
+
+msgid "Network"
+msgstr ""
+
+msgid "Web port"
+msgstr ""
+
+msgid "Port of the Immich web interface (container port is fixed at 2283)."
+msgstr ""
+
+msgid "Timezone"
+msgstr ""
+
+msgid "Timezone used inside the containers, e.g. Asia/Shanghai."
+msgstr ""
+
+msgid "Start"
+msgstr ""
+
+msgid "Stop"
+msgstr ""
+
+msgid "Restart"
+msgstr ""
+
+msgid "Upgrade"
+msgstr ""
+
+msgid "View logs"
+msgstr ""
+
+msgid "View compose file"
+msgstr ""
+
+msgid "Open Immich"
+msgstr ""
+
+msgid "Do you really want to stop the Immich stack? The containers are removed; photos, database and settings are kept."
+msgstr ""
+
+msgid "Do you really want to restart the Immich stack?"
+msgstr ""
+
+msgid "Do you really want to upgrade the Immich stack? Newer images are pulled and the stack is recreated. Read the upstream release notes before major upgrades."
+msgstr ""
+
+msgid "Immich deploy/start output"
+msgstr ""
+
+msgid "Immich stop output"
+msgstr ""
+
+msgid "Immich restart output"
+msgstr ""
+
+msgid "Immich upgrade output"
+msgstr ""
+
+msgid "Immich logs"
+msgstr ""
+
+msgid "Rendered docker-compose.yml"
+msgstr ""

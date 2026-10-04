@@ -1,0 +1,16 @@
+openmediavault-immich (8.0.1) stable; urgency=medium
+
+  * Initial release: Immich photo library management plugin for
+    OpenMediaVault 8.x.
+    - Settings: version tag, web port, timezone, compose directory,
+      upload (photo) location, database location and credentials and
+      the optional machine-learning service.
+    - Renders .env and docker-compose.yml into the compose directory on
+      Apply; deploy/start/stop/restart/upgrade run through
+      'docker compose' as background tasks with live output.
+    - Live status: container state, running Immich version (server
+      API), latest upstream release and update detection, log viewer
+      and generated compose file preview.
+    - Simplified and Traditional Chinese translations included.
+
+ -- ${GITHUB_USER}  Sat, 04 Oct 2026 12:00:00 +0800

@@ -1,0 +1,98 @@
+#!/usr/bin/env dash
+#
+# This file is part of OpenMediaVault.
+#
+# @license   https://www.gnu.org/licenses/gpl.html GPL Version 3
+# @author    ${GITHUB_USER}
+#
+# OpenMediaVault is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# any later version.
+#
+# Control the Immich Docker Compose stack rendered by the OMV plugin.
+#
+# Usage: omv-immich-ctl <cmd> [compose-dir]
+#
+# Commands:
+#   up          start the stack (docker compose up -d)
+#   down        stop and remove the containers (data is kept)
+#   restart     restart the stack
+#   upgrade     pull newer images and recreate the stack
+#   status      print "running" | "partial" | "stopped"
+#   version     print the Immich server version JSON from the local API
+#   latest      print the latest upstream release tag from GitHub
+#   logs        print the last 300 log lines of all services
+#   showcompose print the rendered docker-compose.yml
+
+set -u
+
+CMD="${1:-}"
+DIR="${2:-/srv/docker/immich}"
+
+case "$CMD" in
+	up|down|restart|upgrade|status|version|latest|logs|showcompose)
+	;;
+	*)
+		echo "Usage: omv-immich-ctl <up|down|restart|upgrade|status|version|latest|logs|showcompose> [compose-dir]" >&2
+		exit 64
+	;;
+esac
+
+dc() {
+	(cd "$DIR" && docker compose "$@") 2>&1
+}
+
+case "$CMD" in
+	up)
+		dc up -d --remove-orphans
+	;;
+	down)
+		dc down --remove-orphans
+	;;
+	restart)
+		dc restart
+	;;
+	upgrade)
+		dc pull --ignore-pull-failures || true
+		dc up -d --remove-orphans
+	;;
+	status)
+		if ! (cd "$DIR" && docker compose config --services >/dev/null 2>&1); then
+			echo "stopped"
+			exit 0
+		fi
+		total=$(cd "$DIR" && docker compose config --services 2>/dev/null | wc -l)
+		running=$(cd "$DIR" && docker compose ps --status running -q 2>/dev/null | wc -l)
+		if [ "$total" -eq 0 ] || [ "$running" -eq 0 ]; then
+			echo "stopped"
+		elif [ "$running" -lt "$total" ]; then
+			echo "partial"
+		else
+			echo "running"
+		fi
+	;;
+	version)
+		PORT=2283
+		if [ -f "$DIR/.env" ]; then
+			env_port=$(sed -n 's/^IMMICH_PORT=//p' "$DIR/.env" | tail -n 1)
+			[ -n "$env_port" ] && PORT="$env_port"
+		fi
+		curl -fsS --max-time 3 "http://127.0.0.1:${PORT}/api/server/version" 2>/dev/null || true
+	;;
+	latest)
+		curl -fsSL --max-time 5 \
+			-H "Accept: application/vnd.github+json" \
+			https://api.github.com/repos/immich-app/immich/releases/latest 2>/dev/null \
+			| sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+			| head -n 1 || true
+	;;
+	logs)
+		dc logs --tail 300
+	;;
+	showcompose)
+		cat "$DIR/docker-compose.yml" 2>/dev/null || true
+	;;
+esac
+
+exit 0

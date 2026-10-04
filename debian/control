@@ -1,0 +1,22 @@
+Source: openmediavault-immich
+Section: web
+XB-Plugin-Section: services
+XB-Plugin-Architecture: all
+Priority: optional
+Maintainer: ${GITHUB_USER}
+Build-Depends: debhelper (>= 12)
+Standards-Version: 3.9.6
+Homepage: https://github.com/${GITHUB_USER}/omv-immich
+
+Package: openmediavault-immich
+Architecture: all
+Depends: openmediavault (>= 8.0)
+Priority: optional
+Description: openmediavault Immich plugin
+ Manage the Immich photo library (self-hosted Google Photos alternative)
+ from the OpenMediaVault web interface: the plugin renders the Docker
+ Compose stack (immich-server, redis, database and the optional
+ machine-learning service) into a configurable directory, starts/stops/
+ restarts/updates it via 'docker compose' background tasks and reports
+ the live container status, the running Immich version and available
+ upstream updates. Includes Chinese translations.

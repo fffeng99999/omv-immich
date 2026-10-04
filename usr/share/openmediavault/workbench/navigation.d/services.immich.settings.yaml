@@ -1,0 +1,11 @@
+version: "1.0"
+type: navigation-item
+data:
+  path: "services.immich.settings"
+  text: _("Settings")
+  position: 10
+  icon: "tune"
+  url: "/services/immich/settings"
+  permissions:
+    role:
+    - admin

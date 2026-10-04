@@ -1,0 +1,213 @@
+version: "1.0"
+type: component
+data:
+  name: omv-services-immich-settings-form-page
+  type: formPage
+  config:
+    request:
+      service: Immich
+      get:
+        method: get
+        transform:
+          statusText: "{{ statusText | translate }}"
+      post:
+        method: set
+    hints:
+      - type: info
+        text: _("Immich is a self-hosted photo and video backup solution. Save the settings, click Apply to render the Compose files, then use the buttons below to deploy and manage the stack. While the stack is running it starts automatically at boot.")
+        dismissible: true
+        stateId: 5b8e2c1a-9f3d-4c47-a2b6-0d84e13f7c55
+    fields:
+      - type: divider
+        title: _("Status")
+      - type: textInput
+        name: statusText
+        label: _("Service status")
+        submitValue: false
+        readonly: true
+      - type: textInput
+        name: runningVersion
+        label: _("Running version")
+        submitValue: false
+        readonly: true
+      - type: textInput
+        name: latestVersion
+        label: _("Latest version")
+        submitValue: false
+        readonly: true
+      - type: checkbox
+        name: updateAvailable
+        label: _("Update available")
+        submitValue: false
+        readonly: true
+      - type: textInput
+        name: composeFile
+        label: _("Generated compose file")
+        submitValue: false
+        readonly: true
+
+      - type: divider
+        title: _("Service")
+      - type: checkbox
+        name: enable
+        label: _("Enabled")
+        hint: _("Automatically manage the stack from OMV. On Apply the Compose files are rendered and, when the settings changed, the stack is recreated. Disabling the service removes the containers on Apply (photos and database are kept).")
+        value: false
+
+      - type: divider
+        title: _("Version")
+      - type: textInput
+        name: version
+        label: _("Immich version tag")
+        hint: _("Docker image tag for immich-server and the machine-learning service (e.g. release or v3.2.4). 'release' follows the latest stable release. Prefer pinning a specific version; upgrade with the Upgrade button or change the tag here and Apply.")
+        value: "release"
+        validators:
+          required: true
+      - type: checkbox
+        name: mlEnable
+        label: _("Enable machine learning")
+        hint: _("Adds the immich-machine-learning container for face recognition, smart search and OCR. Requires 4 GB+ of RAM in addition to the base stack.")
+        value: false
+
+      - type: divider
+        title: _("Storage")
+      - type: textInput
+        name: composeDir
+        label: _("Compose directory")
+        hint: _("Directory where .env and docker-compose.yml are rendered. The stack is started from here.")
+        value: "/srv/docker/immich"
+        validators:
+          required: true
+      - type: textInput
+        name: uploadLocation
+        label: _("Upload location")
+        hint: _("Host directory where photos and videos are stored (container path /data). Must be on a local filesystem.")
+        value: "/srv/docker/immich/upload"
+        validators:
+          required: true
+      - type: textInput
+        name: dbDataLocation
+        label: _("Database location")
+        hint: _("Host directory for the PostgreSQL data. Must be on a local filesystem (NFS/SMB/CIFS shares are not supported by Immich).")
+        value: "/srv/docker/immich/db"
+        validators:
+          required: true
+
+      - type: divider
+        title: _("Database")
+      - type: passwordInput
+        name: dbPassword
+        label: _("Database password")
+        hint: _("Postgres password, generated automatically on plugin installation. Changing it after the first deployment requires resetting the database directory.")
+        value: ""
+        autocomplete: "new-password"
+      - type: textInput
+        name: dbUsername
+        label: _("Database username")
+        value: "postgres"
+      - type: textInput
+        name: dbDatabaseName
+        label: _("Database name")
+        value: "immich"
+
+      - type: divider
+        title: _("Network")
+      - type: numberInput
+        name: port
+        label: _("Web port")
+        hint: _("Port of the Immich web interface (container port is fixed at 2283).")
+        value: 2283
+        validators:
+          min: 1
+          max: 65535
+          patternType: port
+      - type: textInput
+        name: timeZone
+        label: _("Timezone")
+        hint: _("Timezone used inside the containers, e.g. Asia/Shanghai.")
+        value: "Etc/UTC"
+    buttons:
+      - text: _("Start")
+        execute:
+          type: taskDialog
+          taskDialog:
+            config:
+              title: _("Immich deploy/start output")
+              width: "70%"
+              startOnInit: true
+              request:
+                service: Immich
+                method: start
+      - text: _("Stop")
+        confirmationDialogConfig:
+          template: confirmation
+          message: _("Do you really want to stop the Immich stack? The containers are removed; photos, database and settings are kept.")
+        execute:
+          type: taskDialog
+          taskDialog:
+            config:
+              title: _("Immich stop output")
+              width: "70%"
+              startOnInit: true
+              request:
+                service: Immich
+                method: stop
+      - text: _("Restart")
+        confirmationDialogConfig:
+          template: confirmation
+          message: _("Do you really want to restart the Immich stack?")
+        execute:
+          type: taskDialog
+          taskDialog:
+            config:
+              title: _("Immich restart output")
+              width: "70%"
+              startOnInit: true
+              request:
+                service: Immich
+                method: restart
+      - text: _("Upgrade")
+        confirmationDialogConfig:
+          template: confirmation
+          message: _("Do you really want to upgrade the Immich stack? Newer images are pulled and the stack is recreated. Read the upstream release notes before major upgrades.")
+        execute:
+          type: taskDialog
+          taskDialog:
+            config:
+              title: _("Immich upgrade output")
+              width: "70%"
+              startOnInit: true
+              request:
+                service: Immich
+                method: upgrade
+      - text: _("View logs")
+        execute:
+          type: taskDialog
+          taskDialog:
+            config:
+              title: _("Immich logs")
+              width: "70%"
+              startOnInit: true
+              request:
+                service: Immich
+                method: getLog
+      - text: _("View compose file")
+        execute:
+          type: taskDialog
+          taskDialog:
+            config:
+              title: _("Rendered docker-compose.yml")
+              width: "70%"
+              startOnInit: true
+              request:
+                service: Immich
+                method: getShowConfig
+      - text: _("Open Immich")
+        execute:
+          type: url
+          url: "/externalRedirect/{{ ['http://', location() | get('hostname'), ':', port] | join }}"
+      - template: cancel
+        execute:
+          type: url
+          url: "/services/immich"
+      - template: submit
