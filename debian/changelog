@@ -1,3 +1,14 @@
+openmediavault-immich (8.0.4) stable; urgency=medium
+
+  * Packaging fix: the conf.service.immich_8.0.2.sh migration script
+    was shipped without the executable bit, so upgrades from 8.0.2
+    failed in postinst ("... is not executable") and left the package
+    half-configured (fresh installs were not affected). The script is
+    now committed with mode 755. Do not upgrade existing 8.0.2
+    installations with the 8.0.3 deb, use this version instead.
+
+ -- fffeng99999  Mon, 06 Oct 2026 18:50:00 +0800
+
 openmediavault-immich (8.0.3) stable; urgency=medium
 
   * Fix the "Open Immich" button: the generated external URL was not
