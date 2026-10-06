@@ -1,3 +1,15 @@
+openmediavault-immich (8.0.3) stable; urgency=medium
+
+  * Fix the "Open Immich" button: the generated external URL was not
+    URI-encoded, so the workbench externalRedirect/:url route (which
+    matches a single path segment) never matched and the click ended
+    on the 404 error page instead of opening the Immich web
+    interface. The URL is now encoded with the encodeuricomponent
+    filter, the same pattern used by the frpc and clouddrive2
+    plugins.
+
+ -- fffeng99999  Mon, 06 Oct 2026 18:30:00 +0800
+
 openmediavault-immich (8.0.2) stable; urgency=medium
 
   * Storage configuration now uses shared folder references
