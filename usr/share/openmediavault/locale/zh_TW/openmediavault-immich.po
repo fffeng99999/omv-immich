@@ -92,26 +92,26 @@ msgstr ".env 與 docker-compose.yml 的渲染位置。請在資料陣列上建�
 msgid "Photo library shared folder"
 msgstr "照片庫共享資料夾"
 
-msgid "Shared folder where photos and videos are stored (container path /data). To move the library to another folder, select the new folder here but do NOT save yet - click 'Test directory' to validate it and 'Migrate library' to copy the data. Save only after the migration succeeded; the data in the old folder is removed when the settings are saved."
-msgstr "存放照片與影片的共享資料夾（容器內路徑 /data）。要把照片庫搬到別的資料夾時，先在這裡選取新資料夾但不要儲存——按「測試目錄」驗證它，再按「遷移照片庫」搬移資料。確認遷移成功後才按儲存；儲存設定時會刪除舊資料夾裡的資料。"
+msgid "Shared folder where photos and videos are stored (container path /data). The stack files and the database folder are handled the same way. Select the new folder in the form but do NOT save yet - click 'Test directories' to validate the changed folders and 'Migrate data' to copy them. Save only after the migration succeeded; the data in the old folders is removed when the settings are saved."
+msgstr "存放照片與影片的共享資料夾（容器內路徑 /data）。上方的 Stack 檔案目錄與下方的資料庫目錄同理。在表單中選取新資料夾但不要儲存——按「測試目錄」驗證已改動的資料夾，再按「遷移資料」搬移。確認遷移成功後才按儲存；儲存設定時會刪除舊資料夾裡的資料。"
 
-msgid "Test directory"
+msgid "Test directories"
 msgstr "測試目錄"
 
-msgid "Migrate library"
-msgstr "遷移照片庫"
+msgid "Migrate data"
+msgstr "遷移資料"
 
-msgid "Validate the selected photo library directory"
-msgstr "驗證所選的「照片庫」目錄"
+msgid "Validate the selected shared folders"
+msgstr "驗證所選的共享資料夾"
 
-msgid "Photo library migration"
-msgstr "照片庫遷移"
+msgid "Directory migration"
+msgstr "目錄遷移"
 
-msgid "Do you really want to migrate the photo library to the directory selected above? The service is stopped, the data is copied with rsync (the original stays untouched) and the stack is started temporarily on the new directory so that you can verify it. Nothing is saved until you click Save; the data in the old directory is removed when the settings are saved."
-msgstr "確定要把照片庫遷移到上面選取的目錄嗎？服務會先停止，資料以 rsync 複製（原始資料保留），接著臨時以新目錄啟動服務供你驗證。按下「儲存」之前不會寫入任何設定；儲存設定時會刪除舊目錄裡的資料。"
+msgid "Do you really want to migrate the data of the changed folders? The service is stopped, the data is copied with rsync (the originals stay untouched) and the stack is started temporarily on the new locations so that you can verify it. Nothing is saved until you click Save; the data in the old folders is removed when the settings are saved."
+msgstr "確定要遷移已改動資料夾的資料嗎？服務會先停止，資料以 rsync 複製（原始資料保留），接著臨時以新位置啟動服務供你驗證。按下「儲存」之前不會寫入任何設定；儲存設定時會刪除舊資料夾裡的資料。"
 
-msgid "Removing the previous photo library"
-msgstr "正在刪除原照片庫資料"
+msgid "Removing the previous data"
+msgstr "正在刪除原資料"
 
 msgid "Database shared folder"
 msgstr "資料庫共享資料夾"

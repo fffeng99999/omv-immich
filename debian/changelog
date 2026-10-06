@@ -1,3 +1,25 @@
+openmediavault-immich (8.0.6) stable; urgency=medium
+
+  * Extend the directory migration from the photo library to all three
+    shared folders of the plugin (stack files, photo library, database).
+    - "Test directories" validates every folder that was changed in the
+      form (not saved yet) and lists the result per folder; folders that
+      were not changed are not touched at all.
+    - "Migrate data" copies every changed folder with rsync, verifies
+      each copy against its source, records the migrations and starts
+      the stack temporarily on the new locations so the result can be
+      checked before saving. The migrated stack files folder becomes the
+      working directory, the migrated photo and database locations are
+      passed as environment variables.
+    - Saving is refused per changed folder until its migration has been
+      recorded. Afterwards only the data of the folders that were
+      actually changed is removed.
+    - The database folder is additionally validated for a PostgreSQL
+      data directory (PG_VERSION marker) and for a matching PostgreSQL
+      version.
+
+ -- fffeng99999  Tue, 07 Oct 2026 12:00:00 +0800
+
 openmediavault-immich (8.0.5) stable; urgency=medium
 
   * Photo library migration: the settings page can now move the whole

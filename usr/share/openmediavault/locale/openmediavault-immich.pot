@@ -93,25 +93,25 @@ msgstr ""
 msgid "Photo library shared folder"
 msgstr ""
 
-msgid "Shared folder where photos and videos are stored (container path /data). To move the library to another folder, select the new folder here but do NOT save yet - click 'Test directory' to validate it and 'Migrate library' to copy the data. Save only after the migration succeeded; the data in the old folder is removed when the settings are saved."
+msgid "Shared folder where photos and videos are stored (container path /data). The stack files and the database folder are handled the same way. Select the new folder in the form but do NOT save yet - click 'Test directories' to validate the changed folders and 'Migrate data' to copy them. Save only after the migration succeeded; the data in the old folders is removed when the settings are saved."
 msgstr ""
 
-msgid "Test directory"
+msgid "Test directories"
 msgstr ""
 
-msgid "Migrate library"
+msgid "Migrate data"
 msgstr ""
 
-msgid "Validate the selected photo library directory"
+msgid "Validate the selected shared folders"
 msgstr ""
 
-msgid "Photo library migration"
+msgid "Directory migration"
 msgstr ""
 
-msgid "Do you really want to migrate the photo library to the directory selected above? The service is stopped, the data is copied with rsync (the original stays untouched) and the stack is started temporarily on the new directory so that you can verify it. Nothing is saved until you click Save; the data in the old directory is removed when the settings are saved."
+msgid "Do you really want to migrate the data of the changed folders? The service is stopped, the data is copied with rsync (the originals stay untouched) and the stack is started temporarily on the new locations so that you can verify it. Nothing is saved until you click Save; the data in the old folders is removed when the settings are saved."
 msgstr ""
 
-msgid "Removing the previous photo library"
+msgid "Removing the previous data"
 msgstr ""
 
 msgid "Database shared folder"

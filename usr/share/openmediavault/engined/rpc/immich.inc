@@ -36,12 +36,20 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
     const CTL = "/usr/sbin/omv-immich-ctl";
 
     /**
-     * State file written by the ctl helper after a successful photo
-     * library migration. It records where the data was moved from and
-     * to, and which directory still has to be cleaned up once the
-     * settings have been saved.
+     * The shared folder references managed by the plugin. Each of them
+     * can be moved to another shared folder from the settings page.
      */
-    const MIGRATION_STATE = "/var/lib/openmediavault/immich-migration.json";
+    const REF_PROPERTIES = ["composeDirRef", "uploadRef", "dbRef"];
+
+    /**
+     * State directory and request file used by the migration helpers.
+     * The ctl helper writes one state file per property
+     * (immich-migration-<property>.json); the RPC writes the request
+     * file holding the target folders that are currently selected in
+     * the settings form (not saved yet).
+     */
+    const STATE_DIR = "/var/lib/openmediavault";
+    const REQUEST_FILE = "/var/lib/openmediavault/immich-migrate-request.json";
 
     /**
      * Settings fields allowed to be persisted by set(). Everything else
@@ -187,32 +195,39 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
         $this->validateMethodContext($context, ["role" => OMV_ROLE_ADMINISTRATOR]);
         $data = array_intersect_key($params, array_flip($this->settingsFields));
 
-        // Moving the photo library to another directory is only allowed
-        // after the data has been copied with the 'Migrate photo library'
+        // A shared folder reference may only be pointed to another
+        // folder after the data has been copied with the 'Migrate data'
         // button. That record is what makes the removal of the previous
         // data (scheduled below and executed right after the settings
-        // have been saved) safe.
+        // have been saved) safe. Properties that did not change are
+        // left completely untouched.
         $current = $this->getSettingsObject($context);
-        $oldRef = (string)($current["uploadRef"] ?? "");
-        $newRef = (string)($data["uploadRef"] ?? "");
-        $state = $this->readMigrationState();
-        if ($newRef !== $oldRef) {
+        foreach (self::REF_PROPERTIES as $prop) {
+            $oldRef = (string)($current[$prop] ?? "");
+            $newRef = (string)($data[$prop] ?? "");
+            $state = $this->readMigrationState($prop);
+            if ($newRef === $oldRef) {
+                // Clear a stale cleanup marker of an earlier migration.
+                if (!empty($state)) {
+                    $state["pendingCleanup"] = "";
+                    $this->writeMigrationState($prop, $state);
+                }
+                continue;
+            }
             $migrated = (true === ($state["completed"] ?? false))
                 && (($state["fromRef"] ?? "") === $oldRef)
                 && (($state["toRef"] ?? "") === $newRef);
-            if (!$migrated && $this->libraryHasData($oldRef)) {
-                throw new \OMV\Exception(
-                    "The photo library directory was changed without ".
-                    "migrating the data first. Use 'Test directory' to ".
-                    "validate the new folder and 'Migrate photo library' ".
-                    "to copy the data, then save again."
-                );
+            if (!$migrated && $this->folderHasData($prop, $oldRef)) {
+                throw new \OMV\Exception(sprintf(
+                    "The %s folder was changed without migrating its ".
+                    "data first. Use 'Test directories' to validate the ".
+                    "new folder and 'Migrate data' to copy it, then save ".
+                    "again.", $this->refLabel($prop)
+                ));
             }
             $state["pendingCleanup"] = $oldRef;
-        } else {
-            $state["pendingCleanup"] = "";
+            $this->writeMigrationState($prop, $state);
         }
-        $this->writeMigrationState($state);
 
         return \OMV\Rpc\Rpc::call("Config", "set", [
             "id" => "conf.service.immich",
@@ -268,86 +283,114 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
     }
 
     /**
-     * Validate the photo library directory that is currently selected in
-     * the settings form. The value has not been saved yet, so it is
-     * passed by the form instead of being read from the configuration.
+     * Validate the shared folders that are currently selected in the
+     * settings form (not saved yet). Only the properties whose value
+     * differs from the saved configuration are checked.
      */
     public function testDir($params, $context)
     {
         $this->validateMethodContext($context, ["role" => OMV_ROLE_ADMINISTRATOR]);
-        return $this->execBgCtl([
-            "testdir", (string)($params["uploadRef"] ?? "")
-        ]);
+        $this->writeRequest($this->changedRefs($params, $context));
+        return $this->execBgCtl(["testdirall"]);
     }
 
     /**
-     * Copy the photo library to the directory currently selected in the
-     * settings form (not saved yet), verify the copy and start the stack
-     * temporarily on the new directory so the user can check the result
-     * before saving.
+     * Copy every changed shared folder to the location selected in the
+     * settings form (not saved yet), verify the copies and start the
+     * stack temporarily on the new locations so the user can check the
+     * result before saving.
      */
     public function migrate($params, $context)
     {
         $this->validateMethodContext($context, ["role" => OMV_ROLE_ADMINISTRATOR]);
-        return $this->execBgCtl([
-            "migrate", (string)($params["uploadRef"] ?? "")
-        ]);
+        $this->writeRequest($this->changedRefs($params, $context));
+        return $this->execBgCtl(["migrateall"]);
     }
 
     /**
-     * Remove the data of the previous photo library. Scheduled by set()
-     * and executed as a background task by the Save button, so the user
-     * sees the progress of the removal.
+     * Remove the data of the previously used shared folders. Scheduled
+     * by set() and executed as a background task by the Save button, so
+     * the user sees the progress of the removal.
      */
     public function cleanupOld($params, $context)
     {
         $this->validateMethodContext($context, ["role" => OMV_ROLE_ADMINISTRATOR]);
-        $state = $this->readMigrationState();
-        $ref = (string)($state["pendingCleanup"] ?? "");
-        $result = $this->execBgCtl(["cleanup", $ref]);
-        if ("" !== $ref) {
-            // Only clear the flag once the removal task has been started;
-            // clearing it late keeps the operation repeatable.
-            $state = $this->readMigrationState();
-            $state["pendingCleanup"] = "";
-            $this->writeMigrationState($state);
-        }
-        return $result;
+        // The ctl helper clears the pending cleanup marker of a property
+        // itself, but only after its data has really been removed, so a
+        // failed removal can be repeated by saving again.
+        return $this->execBgCtl(["cleanupall"]);
     }
 
     /**
-     * Read the migration state file written by the ctl helper.
+     * The shared folder references selected in the form that differ from
+     * the saved configuration, keyed by property name.
      */
-    private function readMigrationState(): array
+    private function changedRefs(array $params, $context): array
     {
-        if (!is_readable(self::MIGRATION_STATE)) {
+        $current = $this->getSettingsObject($context);
+        $changed = [];
+        foreach (self::REF_PROPERTIES as $prop) {
+            $newRef = (string)($params[$prop] ?? "");
+            $oldRef = (string)($current[$prop] ?? "");
+            if (("" !== $newRef) && ($newRef !== $oldRef)) {
+                $changed[$prop] = $newRef;
+            }
+        }
+        return $changed;
+    }
+
+    private function writeRequest(array $refs): void
+    {
+        @file_put_contents(
+            self::REQUEST_FILE,
+            json_encode($refs, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+        );
+    }
+
+    private function refLabel(string $prop): string
+    {
+        $labels = [
+            "composeDirRef" => "stack files",
+            "uploadRef" => "photo library",
+            "dbRef" => "database"
+        ];
+        return $labels[$prop] ?? $prop;
+    }
+
+    /**
+     * Read the migration state file of a property written by the ctl
+     * helper.
+     */
+    private function readMigrationState(string $prop): array
+    {
+        $file = self::STATE_DIR."/immich-migration-".$prop.".json";
+        if (!is_readable($file)) {
             return [];
         }
-        $state = json_decode(
-            (string)file_get_contents(self::MIGRATION_STATE), true
-        );
+        $state = json_decode((string)file_get_contents($file), true);
         return is_array($state) ? $state : [];
     }
 
-    private function writeMigrationState(array $state): void
+    private function writeMigrationState(string $prop, array $state): void
     {
         @file_put_contents(
-            self::MIGRATION_STATE,
+            self::STATE_DIR."/immich-migration-".$prop.".json",
             json_encode($state, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
         );
     }
 
     /**
-     * True when the given shared folder already holds Immich data. An
-     * empty (or not yet initialised) folder may be switched to without
-     * migrating, because there is nothing to preserve.
+     * True when the given shared folder already holds data that belongs
+     * to the property. An empty (or not yet initialised) folder may be
+     * switched to without migrating, because there is nothing to
+     * preserve.
      */
-    private function libraryHasData(string $ref): bool
+    private function folderHasData(string $prop, string $ref): bool
     {
         if ("" === $ref) {
             return false;
         }
-        $cmd = new \OMV\System\Process(self::CTL, ["hasdata", $ref]);
+        $cmd = new \OMV\System\Process(self::CTL, ["hasdata", $prop, $ref]);
         $cmd->setRedirect2to1();
         $cmd->setQuiet(true);
         $output = [];

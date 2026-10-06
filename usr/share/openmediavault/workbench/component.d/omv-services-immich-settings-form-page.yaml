@@ -84,7 +84,7 @@ data:
       - type: sharedFolderSelect
         name: uploadRef
         label: _("Photo library shared folder")
-        hint: _("Shared folder where photos and videos are stored (container path /data). To move the library to another folder, select the new folder here but do NOT save yet - click 'Test directory' to validate it and 'Migrate library' to copy the data. Save only after the migration succeeded; the data in the old folder is removed when the settings are saved.")
+        hint: _("Shared folder where photos and videos are stored (container path /data). The stack files and the database folder are handled the same way. Select the new folder in the form but do NOT save yet - click 'Test directories' to validate the changed folders and 'Migrate data' to copy them. Save only after the migration succeeded; the data in the old folders is removed when the settings are saved.")
         hasEmptyOption: true
         value: ""
         validators:
@@ -136,35 +136,39 @@ data:
         hint: _("Timezone used inside the containers, e.g. Asia/Shanghai.")
         value: "Etc/UTC"
     buttons:
-      - text: _("Test directory")
+      - text: _("Test directories")
         execute:
           type: taskDialog
           taskDialog:
             config:
-              title: _("Validate the selected photo library directory")
+              title: _("Validate the selected shared folders")
               width: "70%"
               startOnInit: true
               request:
                 service: Immich
                 method: testDir
                 params:
+                  composeDirRef: "{{ composeDirRef }}"
                   uploadRef: "{{ uploadRef }}"
-      - text: _("Migrate library")
+                  dbRef: "{{ dbRef }}"
+      - text: _("Migrate data")
         confirmationDialogConfig:
           template: confirmation
-          message: _("Do you really want to migrate the photo library to the directory selected above? The service is stopped, the data is copied with rsync (the original stays untouched) and the stack is started temporarily on the new directory so that you can verify it. Nothing is saved until you click Save; the data in the old directory is removed when the settings are saved.")
+          message: _("Do you really want to migrate the data of the changed folders? The service is stopped, the data is copied with rsync (the originals stay untouched) and the stack is started temporarily on the new locations so that you can verify it. Nothing is saved until you click Save; the data in the old folders is removed when the settings are saved.")
         execute:
           type: taskDialog
           taskDialog:
             config:
-              title: _("Photo library migration")
+              title: _("Directory migration")
               width: "70%"
               startOnInit: true
               request:
                 service: Immich
                 method: migrate
                 params:
+                  composeDirRef: "{{ composeDirRef }}"
                   uploadRef: "{{ uploadRef }}"
+                  dbRef: "{{ dbRef }}"
       - text: _("Start")
         execute:
           type: taskDialog
@@ -253,7 +257,7 @@ data:
           type: taskDialog
           taskDialog:
             config:
-              title: _("Removing the previous photo library")
+              title: _("Removing the previous data")
               width: "70%"
               startOnInit: true
               request:
