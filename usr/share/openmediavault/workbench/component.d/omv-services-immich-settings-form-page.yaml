@@ -84,7 +84,7 @@ data:
       - type: sharedFolderSelect
         name: uploadRef
         label: _("Photo library shared folder")
-        hint: _("Shared folder where photos and videos are stored (container path /data). Create a dedicated folder on the data array.")
+        hint: _("Shared folder where photos and videos are stored (container path /data). To move the library to another folder, select the new folder here but do NOT save yet - click 'Test directory' to validate it and 'Migrate library' to copy the data. Save only after the migration succeeded; the data in the old folder is removed when the settings are saved.")
         hasEmptyOption: true
         value: ""
         validators:
@@ -136,6 +136,35 @@ data:
         hint: _("Timezone used inside the containers, e.g. Asia/Shanghai.")
         value: "Etc/UTC"
     buttons:
+      - text: _("Test directory")
+        execute:
+          type: taskDialog
+          taskDialog:
+            config:
+              title: _("Validate the selected photo library directory")
+              width: "70%"
+              startOnInit: true
+              request:
+                service: Immich
+                method: testDir
+                params:
+                  uploadRef: "{{ uploadRef }}"
+      - text: _("Migrate library")
+        confirmationDialogConfig:
+          template: confirmation
+          message: _("Do you really want to migrate the photo library to the directory selected above? The service is stopped, the data is copied with rsync (the original stays untouched) and the stack is started temporarily on the new directory so that you can verify it. Nothing is saved until you click Save; the data in the old directory is removed when the settings are saved.")
+        execute:
+          type: taskDialog
+          taskDialog:
+            config:
+              title: _("Photo library migration")
+              width: "70%"
+              startOnInit: true
+              request:
+                service: Immich
+                method: migrate
+                params:
+                  uploadRef: "{{ uploadRef }}"
       - text: _("Start")
         execute:
           type: taskDialog
@@ -220,3 +249,13 @@ data:
           type: url
           url: "/services/immich"
       - template: submit
+        execute:
+          type: taskDialog
+          taskDialog:
+            config:
+              title: _("Removing the previous photo library")
+              width: "70%"
+              startOnInit: true
+              request:
+                service: Immich
+                method: cleanupOld

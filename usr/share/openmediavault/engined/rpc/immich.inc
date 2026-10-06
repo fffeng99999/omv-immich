@@ -36,6 +36,14 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
     const CTL = "/usr/sbin/omv-immich-ctl";
 
     /**
+     * State file written by the ctl helper after a successful photo
+     * library migration. It records where the data was moved from and
+     * to, and which directory still has to be cleaned up once the
+     * settings have been saved.
+     */
+    const MIGRATION_STATE = "/var/lib/openmediavault/immich-migration.json";
+
+    /**
      * Settings fields allowed to be persisted by set(). Everything else
      * sent by the form (read-only status fields) is stripped.
      */
@@ -60,6 +68,9 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
         $this->registerMethod("upgrade");
         $this->registerMethod("getLog");
         $this->registerMethod("getShowConfig");
+        $this->registerMethod("testDir");
+        $this->registerMethod("migrate");
+        $this->registerMethod("cleanupOld");
     }
 
     /**
@@ -175,6 +186,34 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
     {
         $this->validateMethodContext($context, ["role" => OMV_ROLE_ADMINISTRATOR]);
         $data = array_intersect_key($params, array_flip($this->settingsFields));
+
+        // Moving the photo library to another directory is only allowed
+        // after the data has been copied with the 'Migrate photo library'
+        // button. That record is what makes the removal of the previous
+        // data (scheduled below and executed right after the settings
+        // have been saved) safe.
+        $current = $this->getSettingsObject($context);
+        $oldRef = (string)($current["uploadRef"] ?? "");
+        $newRef = (string)($data["uploadRef"] ?? "");
+        $state = $this->readMigrationState();
+        if ($newRef !== $oldRef) {
+            $migrated = (true === ($state["completed"] ?? false))
+                && (($state["fromRef"] ?? "") === $oldRef)
+                && (($state["toRef"] ?? "") === $newRef);
+            if (!$migrated && $this->libraryHasData($oldRef)) {
+                throw new \OMV\Exception(
+                    "The photo library directory was changed without ".
+                    "migrating the data first. Use 'Test directory' to ".
+                    "validate the new folder and 'Migrate photo library' ".
+                    "to copy the data, then save again."
+                );
+            }
+            $state["pendingCleanup"] = $oldRef;
+        } else {
+            $state["pendingCleanup"] = "";
+        }
+        $this->writeMigrationState($state);
+
         return \OMV\Rpc\Rpc::call("Config", "set", [
             "id" => "conf.service.immich",
             "data" => $data
@@ -189,19 +228,7 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
     private function execCtlTask($context, string $op): string
     {
         $settings = $this->getSettingsObject($context);
-        $args = [$op, $this->getDirRef($settings)];
-        return $this->execBgProc(
-            function ($bgStatusFilename, $bgOutputFilename) use ($args) {
-                $cmd = new \OMV\System\Process(self::CTL, $args);
-                $cmd->setRedirect2to1();
-                if (0 !== ($exitStatus = $this->exec(
-                    $cmd, $output, $bgOutputFilename
-                ))) {
-                    throw new \OMV\ExecException($cmd, $output, $exitStatus);
-                }
-                return $output;
-            }
-        );
+        return $this->execBgCtl([$op, $this->getDirRef($settings)]);
     }
 
     public function start($params, $context)
@@ -238,5 +265,114 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
     {
         $this->validateMethodContext($context, ["role" => OMV_ROLE_ADMINISTRATOR]);
         return $this->execCtlTask($context, "showcompose");
+    }
+
+    /**
+     * Validate the photo library directory that is currently selected in
+     * the settings form. The value has not been saved yet, so it is
+     * passed by the form instead of being read from the configuration.
+     */
+    public function testDir($params, $context)
+    {
+        $this->validateMethodContext($context, ["role" => OMV_ROLE_ADMINISTRATOR]);
+        return $this->execBgCtl([
+            "testdir", (string)($params["uploadRef"] ?? "")
+        ]);
+    }
+
+    /**
+     * Copy the photo library to the directory currently selected in the
+     * settings form (not saved yet), verify the copy and start the stack
+     * temporarily on the new directory so the user can check the result
+     * before saving.
+     */
+    public function migrate($params, $context)
+    {
+        $this->validateMethodContext($context, ["role" => OMV_ROLE_ADMINISTRATOR]);
+        return $this->execBgCtl([
+            "migrate", (string)($params["uploadRef"] ?? "")
+        ]);
+    }
+
+    /**
+     * Remove the data of the previous photo library. Scheduled by set()
+     * and executed as a background task by the Save button, so the user
+     * sees the progress of the removal.
+     */
+    public function cleanupOld($params, $context)
+    {
+        $this->validateMethodContext($context, ["role" => OMV_ROLE_ADMINISTRATOR]);
+        $state = $this->readMigrationState();
+        $ref = (string)($state["pendingCleanup"] ?? "");
+        $result = $this->execBgCtl(["cleanup", $ref]);
+        if ("" !== $ref) {
+            // Only clear the flag once the removal task has been started;
+            // clearing it late keeps the operation repeatable.
+            $state = $this->readMigrationState();
+            $state["pendingCleanup"] = "";
+            $this->writeMigrationState($state);
+        }
+        return $result;
+    }
+
+    /**
+     * Read the migration state file written by the ctl helper.
+     */
+    private function readMigrationState(): array
+    {
+        if (!is_readable(self::MIGRATION_STATE)) {
+            return [];
+        }
+        $state = json_decode(
+            (string)file_get_contents(self::MIGRATION_STATE), true
+        );
+        return is_array($state) ? $state : [];
+    }
+
+    private function writeMigrationState(array $state): void
+    {
+        @file_put_contents(
+            self::MIGRATION_STATE,
+            json_encode($state, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+        );
+    }
+
+    /**
+     * True when the given shared folder already holds Immich data. An
+     * empty (or not yet initialised) folder may be switched to without
+     * migrating, because there is nothing to preserve.
+     */
+    private function libraryHasData(string $ref): bool
+    {
+        if ("" === $ref) {
+            return false;
+        }
+        $cmd = new \OMV\System\Process(self::CTL, ["hasdata", $ref]);
+        $cmd->setRedirect2to1();
+        $cmd->setQuiet(true);
+        $output = [];
+        $exitStatus = 0;
+        $cmd->execute($output, $exitStatus);
+        return (0 === $exitStatus);
+    }
+
+    /**
+     * Run the ctl helper as a background task and return the task status
+     * file name so the task dialog can poll the live output.
+     */
+    private function execBgCtl(array $args): string
+    {
+        return $this->execBgProc(
+            function ($bgStatusFilename, $bgOutputFilename) use ($args) {
+                $cmd = new \OMV\System\Process(self::CTL, $args);
+                $cmd->setRedirect2to1();
+                if (0 !== ($exitStatus = $this->exec(
+                    $cmd, $output, $bgOutputFilename
+                ))) {
+                    throw new \OMV\ExecException($cmd, $output, $exitStatus);
+                }
+                return $output;
+            }
+        );
     }
 }

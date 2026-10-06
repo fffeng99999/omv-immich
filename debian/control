@@ -10,7 +10,7 @@ Homepage: https://github.com/${GITHUB_USER}/omv-immich
 
 Package: openmediavault-immich
 Architecture: all
-Depends: openmediavault (>= 8.0)
+Depends: openmediavault (>= 8.0), rsync
 Priority: optional
 Description: openmediavault Immich plugin
  Manage the Immich photo library (self-hosted Google Photos alternative)

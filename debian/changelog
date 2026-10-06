@@ -1,3 +1,26 @@
+openmediavault-immich (8.0.5) stable; urgency=medium
+
+  * Photo library migration: the settings page can now move the whole
+    library to another shared folder without shell access.
+    - New "Test directory" button validates the currently selected
+      (not yet saved) photo library folder: it must exist, be
+      writable, live on a local filesystem and either be empty or
+      already carry the six .immich integrity markers - otherwise
+      Immich would refuse to start. Free space is compared with the
+      size of the current library.
+    - New "Migrate library" button (with a confirmation dialog) stops
+      the stack, copies the library with rsync (permissions, ACLs and
+      xattrs preserved), verifies the copy against the source, records
+      the migration and starts the stack temporarily on the new folder
+      so the result can be checked in Immich. Nothing is saved yet.
+    - Saving is refused while the photo library folder changes without
+      a completed migration, and the data in the previous folder is
+      removed (only the six Immich directories) by a background task
+      that runs right after the settings have been saved.
+    - rsync is added to the package dependencies.
+
+ -- fffeng99999  Tue, 07 Oct 2026 10:00:00 +0800
+
 openmediavault-immich (8.0.4) stable; urgency=medium
 
   * Packaging fix: the conf.service.immich_8.0.2.sh migration script

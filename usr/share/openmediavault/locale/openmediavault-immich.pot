@@ -93,7 +93,25 @@ msgstr ""
 msgid "Photo library shared folder"
 msgstr ""
 
-msgid "Shared folder where photos and videos are stored (container path /data). Create a dedicated folder on the data array."
+msgid "Shared folder where photos and videos are stored (container path /data). To move the library to another folder, select the new folder here but do NOT save yet - click 'Test directory' to validate it and 'Migrate library' to copy the data. Save only after the migration succeeded; the data in the old folder is removed when the settings are saved."
+msgstr ""
+
+msgid "Test directory"
+msgstr ""
+
+msgid "Migrate library"
+msgstr ""
+
+msgid "Validate the selected photo library directory"
+msgstr ""
+
+msgid "Photo library migration"
+msgstr ""
+
+msgid "Do you really want to migrate the photo library to the directory selected above? The service is stopped, the data is copied with rsync (the original stays untouched) and the stack is started temporarily on the new directory so that you can verify it. Nothing is saved until you click Save; the data in the old directory is removed when the settings are saved."
+msgstr ""
+
+msgid "Removing the previous photo library"
 msgstr ""
 
 msgid "Database shared folder"

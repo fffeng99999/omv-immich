@@ -12,12 +12,24 @@
 #
 # Control the Immich Docker Compose stack rendered by the OMV plugin.
 #
-# Usage: omv-immich-ctl <cmd> <shared-folder-ref>
+# Usage: omv-immich-ctl <cmd> [shared-folder-ref]
 #
-# The second argument is the shared folder UUID of the stack files
-# (conf.service.immich composeDirRef); it is resolved to the real
-# path with the OMV helper functions. Pass an empty string when no
-# shared folder is selected yet (only 'status' tolerates it).
+# Stack commands (up/down/restart/upgrade/status/version/latest/logs/
+# showcompose/path) take the shared folder UUID of the stack files
+# (conf.service.immich composeDirRef); it is resolved to the real path
+# with the OMV helper functions. Pass an empty string when no shared
+# folder is selected yet (only 'status' tolerates it).
+#
+# Photo library migration commands take the shared folder UUID of the
+# *target* photo library (the value currently selected in the settings
+# form, which has not been saved yet):
+#   testdir <newRef>  validate the target directory (report only)
+#   migrate <newRef>  stop the stack, rsync the library to the target,
+#                     verify the copy, record it and start the stack
+#                     temporarily on the new directory for verification
+#   cleanup <ref>     remove the Immich data directories under <ref>
+#                     (only the six known Immich folders are removed)
+#   hasdata <ref>     exit 0 when Immich data is present, 1 otherwise
 #
 # Commands:
 #   up          start the stack (docker compose up -d)
@@ -35,30 +47,164 @@ set -u
 
 . /usr/share/openmediavault/scripts/helper-functions
 
+MIGRATION_STATE="/var/lib/openmediavault/immich-migration.json"
+
+# The six directories Immich expects below the upload location. Each of
+# them must contain a hidden '.immich' marker file, otherwise Immich
+# refuses to start (see docs.immich.app/administration/system-integrity).
+IMMICH_DATA_DIRS="upload library thumbs encoded-video profile backups"
+
 CMD="${1:-}"
-DIR_REF="${2:-}"
+ARG="${2:-}"
 
 case "$CMD" in
-	up|down|restart|upgrade|status|version|latest|logs|showcompose|path)
+	up|down|restart|upgrade|status|version|latest|logs|showcompose|path|testdir|migrate|cleanup|hasdata)
 	;;
 	*)
-		echo "Usage: omv-immich-ctl <up|down|restart|upgrade|status|version|latest|logs|showcompose|path> <shared-folder-ref>" >&2
+		echo "Usage: omv-immich-ctl <up|down|restart|upgrade|status|version|latest|logs|showcompose|path|testdir|migrate|cleanup|hasdata> [shared-folder-ref]" >&2
 		exit 64
 	;;
 esac
 
-# Resolve the shared folder reference to the compose directory. An
-# empty reference (nothing selected yet) is only tolerated by
-# 'status' (reported as notinstalled) and 'path' (prints nothing).
-DIR="$(omv_get_sharedfolder_path "$DIR_REF" 2>/dev/null || true)"
-if [ -z "$DIR" ] && [ "$CMD" != "status" ] && [ "$CMD" != "path" ]; then
-	echo "ERROR: no shared folder selected for the stack files. Open Services -> Immich -> Settings, pick one and apply the changes." >&2
-	exit 1
-fi
+# ---------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------
+
+# Read a scalar property of conf.service.immich from the config database.
+# The value may be quoted (string) or not (boolean/number), so the quotes
+# are stripped and the result trimmed.
+conf_value() {
+	omv-confdbadm read conf.service.immich 2>/dev/null | tr -d '\n' \
+		| sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\([^,}]*\).*/\1/p" \
+		| tr -d '"' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
+# Resolve a shared folder reference to its absolute path.
+ref_path() {
+	omv_get_sharedfolder_path "$1" 2>/dev/null || true
+}
+
+# True when $1 is a local (non network) filesystem.
+is_local_fs() {
+	case "$(findmnt -no FSTYPE --target "$1" 2>/dev/null)" in
+		nfs|nfs4|cifs|smb3|9p|ceph|glusterfs|fuse.sshfs)
+			return 1
+			;;
+		"")
+			return 1
+			;;
+		*)
+			return 0
+			;;
+	esac
+}
+
+dir_is_empty() {
+	[ -z "$(ls -A "$1" 2>/dev/null)" ]
+}
+
+# True when all six Immich data directories carry their .immich marker.
+has_immich_markers() {
+	for _d in $IMMICH_DATA_DIRS; do
+		[ -f "$1/$_d/.immich" ] || return 1
+	done
+	return 0
+}
+
+# True when at least one Immich data directory exists.
+has_immich_data() {
+	for _d in $IMMICH_DATA_DIRS; do
+		if [ -e "$1/$_d" ]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+human_size() {
+	numfmt --to=iec "$1" 2>/dev/null || echo "$1 bytes"
+}
+
+# check_target <oldDir> <newDir> - print the validation report and
+# return 0 when the target can host the library, 1 otherwise.
+check_target() {
+	_old="$1"
+	_new="$2"
+	_rc=0
+	echo "Target directory : $_new"
+	if [ -n "$_old" ]; then
+		echo "Current directory: $_old"
+	fi
+	echo ""
+	if [ ! -d "$_new" ]; then
+		echo "FAIL  The target directory does not exist."
+		return 1
+	fi
+	echo "ok    Directory exists"
+	if touch "$_new/.ovm-write-test" 2>/dev/null; then
+		rm -f "$_new/.ovm-write-test"
+		echo "ok    Directory is writable"
+	else
+		echo "FAIL  Directory is not writable"
+		_rc=1
+	fi
+	if is_local_fs "$_new"; then
+		echo "ok    Local filesystem ($(findmnt -no FSTYPE --target "$_new" 2>/dev/null))"
+	else
+		echo "FAIL  Not a local filesystem - Immich does not support network shares"
+		_rc=1
+	fi
+	if dir_is_empty "$_new"; then
+		echo "ok    Target is empty (Immich initialises it on first start)"
+	elif has_immich_markers "$_new"; then
+		echo "ok    Target already holds a valid Immich library"
+	else
+		echo "FAIL  Target contains data without the Immich integrity markers (.immich)"
+		echo "      Immich would refuse to start and restart forever:"
+		echo "      https://docs.immich.app/administration/system-integrity"
+		echo "      Select an empty folder, or migrate an existing library into it."
+		_rc=1
+	fi
+	if [ -n "$_old" ] && [ -d "$_old" ]; then
+		_need="$(du -sb "$_old" 2>/dev/null | awk '{print $1}')"
+		_avail="$(df -B1 --output=avail "$_new" 2>/dev/null | tail -n 1 | tr -d ' ')"
+		echo ""
+		if [ -n "$_need" ]; then
+			echo "Source size    : $(human_size "$_need")"
+		fi
+		if [ -n "$_avail" ]; then
+			echo "Free on target : $(human_size "$_avail")"
+		fi
+		if [ -n "$_need" ] && [ -n "$_avail" ] && [ "$_avail" -lt "$_need" ]; then
+			echo "FAIL  Not enough free space on the target"
+			_rc=1
+		elif [ -n "$_need" ] && [ -n "$_avail" ]; then
+			echo "ok    Enough free space"
+		fi
+	fi
+	echo ""
+	if [ "$_rc" -eq 0 ]; then
+		echo "RESULT: the target directory is ready for migration."
+	else
+		echo "RESULT: the target directory is NOT usable (see FAIL above)."
+	fi
+	return "$_rc"
+}
 
 dc() {
 	(cd "$DIR" && docker compose "$@") 2>&1
 }
+
+# Stack commands operate on the compose directory.
+case "$CMD" in
+	up|down|restart|upgrade|status|version|latest|logs|showcompose|path)
+		DIR="$(omv_get_sharedfolder_path "$ARG" 2>/dev/null || true)"
+		if [ -z "$DIR" ] && [ "$CMD" != "status" ] && [ "$CMD" != "path" ]; then
+			echo "ERROR: no shared folder selected for the stack files. Open Services -> Immich -> Settings, pick one and apply the changes." >&2
+			exit 1
+		fi
+		;;
+esac
 
 case "$CMD" in
 	up)
@@ -116,6 +262,154 @@ case "$CMD" in
 	;;
 	path)
 		[ -n "$DIR" ] && echo "$DIR"
+	;;
+	testdir)
+		if [ -z "$ARG" ]; then
+			echo "FAIL  No target shared folder selected." >&2
+			exit 1
+		fi
+		NEW_DIR="$(ref_path "$ARG")"
+		if [ -z "$NEW_DIR" ]; then
+			echo "FAIL  The selected shared folder cannot be resolved." >&2
+			exit 1
+		fi
+		OLD_REF="$(conf_value uploadRef)"
+		OLD_DIR=""
+		if [ -n "$OLD_REF" ]; then
+			OLD_DIR="$(ref_path "$OLD_REF")"
+		fi
+		if [ -n "$OLD_DIR" ] && [ "$NEW_DIR" = "$OLD_DIR" ]; then
+			echo "FAIL  The selected directory is the one already in use."
+			echo ""
+			echo "RESULT: nothing to migrate."
+			exit 0
+		fi
+		check_target "$OLD_DIR" "$NEW_DIR" || true
+		exit 0
+	;;
+	hasdata)
+		if [ -z "$ARG" ]; then
+			exit 1
+		fi
+		_HAS_DIR="$(ref_path "$ARG")"
+		if [ -n "$_HAS_DIR" ] && has_immich_data "$_HAS_DIR"; then
+			exit 0
+		fi
+		exit 1
+	;;
+	migrate)
+		if [ -z "$ARG" ]; then
+			echo "ERROR: no target shared folder selected." >&2
+			exit 1
+		fi
+		NEW_REF="$ARG"
+		NEW_DIR="$(ref_path "$NEW_REF")"
+		if [ -z "$NEW_DIR" ]; then
+			echo "ERROR: the selected shared folder cannot be resolved." >&2
+			exit 1
+		fi
+		OLD_REF="$(conf_value uploadRef)"
+		OLD_DIR=""
+		if [ -n "$OLD_REF" ]; then
+			OLD_DIR="$(ref_path "$OLD_REF")"
+		fi
+		if [ -z "$OLD_DIR" ]; then
+			echo "ERROR: no photo library is configured yet - there is nothing to migrate." >&2
+			exit 1
+		fi
+		if [ "$NEW_DIR" = "$OLD_DIR" ]; then
+			echo "ERROR: the target is the directory already in use." >&2
+			exit 1
+		fi
+
+		echo "=== 1/5  validate the target directory ==="
+		if ! check_target "$OLD_DIR" "$NEW_DIR"; then
+			echo ""
+			echo "Migration aborted: the target directory is not usable."
+			exit 1
+		fi
+
+		echo ""
+		echo "=== 2/5  stop the stack ==="
+		COMPOSE_REF="$(conf_value composeDirRef)"
+		COMPOSE_DIR=""
+		if [ -n "$COMPOSE_REF" ]; then
+			COMPOSE_DIR="$(ref_path "$COMPOSE_REF")"
+		fi
+		if [ -n "$COMPOSE_DIR" ] && [ -f "$COMPOSE_DIR/docker-compose.yml" ]; then
+			(cd "$COMPOSE_DIR" && docker compose down --remove-orphans) 2>&1 || true
+		else
+			echo "No rendered stack found - nothing to stop."
+		fi
+
+		echo ""
+		echo "=== 3/5  copy the library (rsync) ==="
+		rsync -aHAX --numeric-ids --info=progress2 "$OLD_DIR/" "$NEW_DIR/"
+		if [ $? -ne 0 ]; then
+			echo ""
+			echo "ERROR: rsync reported an error. The copy may be incomplete."
+			echo "       Do NOT save the settings - fix the problem and run the migration again."
+			exit 1
+		fi
+
+		echo ""
+		echo "=== 4/5  verify the copy ==="
+		DIFF="$(rsync -aHAXn -i "$OLD_DIR/" "$NEW_DIR/" 2>&1 || true)"
+		if [ -n "$DIFF" ]; then
+			echo "$DIFF" | head -n 40
+			echo ""
+			echo "WARNING: the verification found differences (listed above). Review them carefully before saving."
+		else
+			echo "ok    The source and the target are identical."
+		fi
+		_FILES="$(find "$NEW_DIR" -type f 2>/dev/null | wc -l)"
+		_BYTES="$(du -sb "$NEW_DIR" 2>/dev/null | awk '{print $1}')"
+		echo "Files: $_FILES   Size: $(human_size "${_BYTES:-0}")"
+
+		cat > "$MIGRATION_STATE" <<EOF
+{"fromRef":"$OLD_REF","from":"$OLD_DIR","toRef":"$NEW_REF","to":"$NEW_DIR","completed":true,"at":"$(date -Iseconds)","pendingCleanup":""}
+EOF
+		echo ""
+		echo "The migration is recorded. The old data is untouched."
+		echo "Click Save in the settings page to make the new directory permanent;"
+		echo "the data under the old directory is removed when the settings are saved."
+
+		echo ""
+		echo "=== 5/5  temporary start on the new directory ==="
+		if [ "$(conf_value enable)" = "true" ] && [ -n "$COMPOSE_DIR" ] && [ -f "$COMPOSE_DIR/docker-compose.yml" ]; then
+			echo "Starting the stack with the new upload location (not saved yet)..."
+			echo ""
+			(cd "$COMPOSE_DIR" && UPLOAD_LOCATION="$NEW_DIR" docker compose up -d --remove-orphans) 2>&1
+			echo ""
+			echo "The stack now runs TEMPORARILY on the new directory so that you can verify it in Immich."
+			echo "Nothing has been saved: if you do not save, the next Apply restores the old directory."
+		else
+			echo "The service is disabled (or not rendered yet) - nothing was started."
+		fi
+	;;
+	cleanup)
+		if [ -z "$ARG" ]; then
+			echo "No previous photo library to remove."
+			exit 0
+		fi
+		DEL_DIR="$(ref_path "$ARG")"
+		if [ -z "$DEL_DIR" ]; then
+			echo "ERROR: the shared folder to clean up cannot be resolved." >&2
+			exit 1
+		fi
+		IN_USE="$(conf_value uploadRef)"
+		if [ -n "$IN_USE" ] && [ "$ARG" = "$IN_USE" ]; then
+			echo "ERROR: refusing to remove the photo library that is currently in use." >&2
+			exit 1
+		fi
+		echo "Removing the Immich data under: $DEL_DIR"
+		for _d in $IMMICH_DATA_DIRS; do
+			if [ -e "$DEL_DIR/$_d" ]; then
+				echo "  removing $_d"
+				rm -rf "$DEL_DIR/$_d"
+			fi
+		done
+		echo "Done."
 	;;
 esac
 
