@@ -60,7 +60,7 @@ data:
         name: version
         label: _("Immich version tag")
         hint: _("Docker image tag for immich-server and the machine-learning service (e.g. release or v3.2.4). 'release' follows the latest stable release. Prefer pinning a specific version; upgrade with the Upgrade button or change the tag here and Apply.")
-        value: "release"
+        value: "v3.2.4"
         validators:
           required: true
       - type: checkbox
@@ -71,27 +71,36 @@ data:
 
       - type: divider
         title: _("Storage")
-      - type: textInput
-        name: composeDir
-        label: _("Compose directory")
-        hint: _("Directory where .env and docker-compose.yml are rendered. The stack is started from here.")
-        value: "/srv/docker/immich"
+      - type: sharedFolderSelect
+        name: composeDirRef
+        label: _("Stack files shared folder")
+        hint: _("Shared folder where .env and docker-compose.yml are rendered. Create one on the data array, e.g. 'immich-stack'.")
+        hasEmptyOption: true
+        value: ""
         validators:
-          required: true
-      - type: textInput
-        name: uploadLocation
-        label: _("Upload location")
-        hint: _("Host directory where photos and videos are stored (container path /data). Must be on a local filesystem.")
-        value: "/srv/docker/immich/upload"
+          requiredIf:
+            operator: truthy
+            arg0: enable
+      - type: sharedFolderSelect
+        name: uploadRef
+        label: _("Photo library shared folder")
+        hint: _("Shared folder where photos and videos are stored (container path /data). Create a dedicated folder on the data array.")
+        hasEmptyOption: true
+        value: ""
         validators:
-          required: true
-      - type: textInput
-        name: dbDataLocation
-        label: _("Database location")
-        hint: _("Host directory for the PostgreSQL data. Must be on a local filesystem (NFS/SMB/CIFS shares are not supported by Immich).")
-        value: "/srv/docker/immich/db"
+          requiredIf:
+            operator: truthy
+            arg0: enable
+      - type: sharedFolderSelect
+        name: dbRef
+        label: _("Database shared folder")
+        hint: _("Shared folder for the PostgreSQL data. Must be on a local filesystem (NFS/SMB/CIFS shares are not supported by Immich).")
+        hasEmptyOption: true
+        value: ""
         validators:
-          required: true
+          requiredIf:
+            operator: truthy
+            arg0: enable
 
       - type: divider
         title: _("Database")

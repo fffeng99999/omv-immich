@@ -39,12 +39,8 @@ class Immich extends \OMV\Engine\Module\ServiceAbstract
 	{
 		$db = \OMV\Config\Database::getInstance();
 		$object = $db->get("conf.service.immich");
-		$dir = $object->get("composeDir");
-		if (empty($dir)) {
-			$dir = "/srv/docker/immich";
-		}
 		$cmd = new \OMV\System\Process("/usr/sbin/omv-immich-ctl", [
-			"status", $dir
+			"status", (string)$object->get("composeDirRef")
 		]);
 		$cmd->setRedirect2to1();
 		$cmd->setQuiet(true);
@@ -67,5 +63,28 @@ class Immich extends \OMV\Engine\Module\ServiceAbstract
 			"org.openmediavault.conf.service.immich",
 			[$this, "setDirty"]
 		);
+		// The rendered files depend on the resolved shared folder
+		// paths, so a modified shared folder must mark the service
+		// dirty when it is one of the referenced ones.
+		$dispatcher->addListener(
+			OMV_NOTIFY_MODIFY,
+			"org.openmediavault.conf.system.sharedfolder",
+			[$this, "onSharedFolder"]
+		);
+	}
+
+	public function onSharedFolder($object)
+	{
+		$db = \OMV\Config\Database::getInstance();
+		foreach (["composeDirRef", "uploadRef", "dbRef"] as $prop) {
+			if ($db->exists("conf.service.immich", [
+				"operator" => "stringEquals",
+				"arg0" => $prop,
+				"arg1" => $object["uuid"]
+			])) {
+				$this->setDirty();
+				return;
+			}
+		}
 	}
 }

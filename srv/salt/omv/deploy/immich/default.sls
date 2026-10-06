@@ -9,7 +9,7 @@
 # any later version.
 
 # Renders the Immich Docker Compose stack (.env + docker-compose.yml)
-# into the configured compose directory.
+# into the shared folder selected for the stack files.
 #
 # The stack itself is managed through 'docker compose' (plugin start/
 # stop/restart/upgrade buttons run /usr/sbin/omv-immich-ctl as a
@@ -17,11 +17,17 @@
 # automatically when it is enabled and the rendered files changed;
 # disabling the service removes the containers (all data is kept in the
 # bind-mounted upload/database directories).
+#
+# The storage properties hold shared folder references (UUIDs) which
+# are resolved to real paths by the omv_conf Salt module. Nothing is
+# rendered until all three shared folders are selected.
 
 {% set config = salt['omv_conf.get']('conf.service.immich') %}
-{% set dir = config.composeDir | default('/srv/docker/immich', true) %}
-{% set upload = config.uploadLocation | default(dir ~ '/upload', true) %}
-{% set dbdir = config.dbDataLocation | default(dir ~ '/db', true) %}
+{% if config.composeDirRef and config.uploadRef and config.dbRef %}
+
+{% set dir = salt['omv_conf.get_sharedfolder_path'](config.composeDirRef) %}
+{% set upload = salt['omv_conf.get_sharedfolder_path'](config.uploadRef) %}
+{% set dbdir = salt['omv_conf.get_sharedfolder_path'](config.dbRef) %}
 
 render_immich_env:
   file.managed:
@@ -74,5 +80,18 @@ immich_compose_down:
     - name: docker compose down --remove-orphans
     - cwd: '{{ dir }}'
     - onlyif: test -f '{{ dir }}/docker-compose.yml'
+
+{% endif %}
+
+{% else %}
+
+# Storage not fully configured yet (no shared folders selected):
+# nothing to render, nothing to start.
+immich_storage_not_configured:
+  test.configurable_test_state:
+    - name: immich_storage_not_configured
+    - changes: False
+    - result: True
+    - comment: "Select the stack/photo/database shared folders on the Immich settings page first."
 
 {% endif %}

@@ -12,32 +12,49 @@
 #
 # Control the Immich Docker Compose stack rendered by the OMV plugin.
 #
-# Usage: omv-immich-ctl <cmd> [compose-dir]
+# Usage: omv-immich-ctl <cmd> <shared-folder-ref>
+#
+# The second argument is the shared folder UUID of the stack files
+# (conf.service.immich composeDirRef); it is resolved to the real
+# path with the OMV helper functions. Pass an empty string when no
+# shared folder is selected yet (only 'status' tolerates it).
 #
 # Commands:
 #   up          start the stack (docker compose up -d)
 #   down        stop and remove the containers (data is kept)
 #   restart     restart the stack
 #   upgrade     pull newer images and recreate the stack
-#   status      print "running" | "partial" | "stopped"
+#   status      print "running" | "partial" | "stopped" | "notinstalled"
 #   version     print the Immich server version JSON from the local API
 #   latest      print the latest upstream release tag from GitHub
 #   logs        print the last 300 log lines of all services
 #   showcompose print the rendered docker-compose.yml
+#   path        print the resolved compose directory (or nothing)
 
 set -u
 
+. /usr/share/openmediavault/scripts/helper-functions
+
 CMD="${1:-}"
-DIR="${2:-/srv/docker/immich}"
+DIR_REF="${2:-}"
 
 case "$CMD" in
-	up|down|restart|upgrade|status|version|latest|logs|showcompose)
+	up|down|restart|upgrade|status|version|latest|logs|showcompose|path)
 	;;
 	*)
-		echo "Usage: omv-immich-ctl <up|down|restart|upgrade|status|version|latest|logs|showcompose> [compose-dir]" >&2
+		echo "Usage: omv-immich-ctl <up|down|restart|upgrade|status|version|latest|logs|showcompose|path> <shared-folder-ref>" >&2
 		exit 64
 	;;
 esac
+
+# Resolve the shared folder reference to the compose directory. An
+# empty reference (nothing selected yet) is only tolerated by
+# 'status' (reported as notinstalled) and 'path' (prints nothing).
+DIR="$(omv_get_sharedfolder_path "$DIR_REF" 2>/dev/null || true)"
+if [ -z "$DIR" ] && [ "$CMD" != "status" ] && [ "$CMD" != "path" ]; then
+	echo "ERROR: no shared folder selected for the stack files. Open Services -> Immich -> Settings, pick one and apply the changes." >&2
+	exit 1
+fi
 
 dc() {
 	(cd "$DIR" && docker compose "$@") 2>&1
@@ -58,8 +75,12 @@ case "$CMD" in
 		dc up -d --remove-orphans
 	;;
 	status)
+		if [ -z "$DIR" ]; then
+			echo "notinstalled"
+			exit 0
+		fi
 		if ! (cd "$DIR" && docker compose config --services >/dev/null 2>&1); then
-			echo "stopped"
+			echo "notinstalled"
 			exit 0
 		fi
 		total=$(cd "$DIR" && docker compose config --services 2>/dev/null | wc -l)
@@ -92,6 +113,9 @@ case "$CMD" in
 	;;
 	showcompose)
 		cat "$DIR/docker-compose.yml" 2>/dev/null || true
+	;;
+	path)
+		[ -n "$DIR" ] && echo "$DIR"
 	;;
 esac
 

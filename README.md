@@ -305,11 +305,43 @@ omv-compose 栈卸载：WebUI → 栈 → Down + 删除，再删共享文件夹�
 
 ### 插件工作原理
 
-- 配置存 `conf.service.immich`（版本标签/Web 端口/时区/Compose 目录/照片目录/DB 目录与凭据/ML 开关）。
-- 「应用」时 Salt state（`srv/salt/omv/deploy/immich/`）把 `.env`（600）与 `docker-compose.yml`（644）渲染到 Compose 目录；启用状态下文件有变化会自动重建栈，停用则移除容器（数据保留）。
+- 配置存 `conf.service.immich`（版本标签/Web 端口/时区/ML 开关/数据库凭据 + **三个共享文件夹引用**）。
+  存储采用 OMV 官方 sharedfolder 引用模式：`composeDirRef`（栈文件）/ `uploadRef`（照片库）/ `dbRef`（PostgreSQL 数据）
+  三个下拉框（`sharedFolderSelect`）直接选择已建好的共享文件夹，**数据天然落在阵列上**；
+  配置里只存 UUID 引用，真实路径由 Salt（`omv_conf.get_sharedfolder_path`）与 ctl（`omv_get_sharedfolder_path`）在渲染/执行时解析，
+  共享文件夹变更会被引擎模块监听并自动置脏重渲染。
+- 「应用」时 Salt state（`srv/salt/omv/deploy/immich/`）把 `.env`（600）与 `docker-compose.yml`（644）渲染到所选共享文件夹；三个引用未配齐时不渲染（Apply 显示提示）。启用状态下文件有变化会自动重建栈，停用则移除容器（数据保留）。
 - 首次部署、显式升级、启停、日志走 RPC 后台任务（`omv-immich-ctl` 封装 `docker compose`），任务弹窗实时显示输出，不受 Web 请求超时影响。
-- 状态页显示：容器状态（运行/部分/停止）、运行版本（Immich API）、最新上游版本（GitHub API）与更新提示。
+- 状态页显示：容器状态（运行/部分/停止/未渲染）、运行版本（Immich API）、最新上游版本（GitHub API）与更新提示。
 - 已知限制：测试环境网络下 `api.github.com` 可能被限流（HTTP 403），此时「最新版本」显示为空、更新检测降级停用；`docker pull` 升级不受影响。
+
+### 升级到 8.0.2（存储字段改为共享文件夹引用）
+
+8.0.1 的三个手填路径字段（`composeDir/uploadLocation/dbDataLocation`）在 8.0.2 已替换为三个共享文件夹引用（`composeDirRef/uploadRef/dbRef`）。**插件不会自动搬家数据**，按下列顺序操作：
+
+**顺序铁律**：先停栈 → 再升级 deb → 再搬数据 → 最后配置 Apply。
+
+1. **8.0.1 页面先 Stop 栈**（容器移除、数据保留）。必须用 8.0.1 的按钮停——升级后再停面对的是孤儿容器，要手工 `docker rm` 清理；
+2. `apt-get install ./openmediavault-immich_8.0.2_all.deb`（或 purge 后重装，confdb 更干净）。安装时 migration 自动补三个空引用键，旧路径键留在 config.xml 成孤儿（datamodel 忽略，无害）；
+3. **WebUI 建三个共享文件夹**（存储 → 共享文件夹，建在数据阵列上）：`immich-stack`（栈文件）/ `immich-photos`（照片库）/ `immich-db`（数据库，本地文件系统，禁网络共享）；
+4. **搬移数据**（旧数据与共享文件夹在同一阵列文件系统时 `mv` 是秒级 rename）：
+
+   ```bash
+   MNT=<阵列挂载点>   # 如 /srv/dev-disk-by-uuid-…
+   # 照片（含隐藏文件，shopt 确保 dotglob）
+   (shopt -s dotglob; mv "$MNT"/docker/immich/upload/* "$MNT"/immich-photos/)
+   # PostgreSQL 数据（必须容器已停；同样含隐藏文件）
+   (shopt -s dotglob; mv "$MNT"/docker/immich/db/* "$MNT"/immich-db/)
+   # 旧渲染物留档即可，不搬家
+   ```
+
+5. **页面配置**：三个下拉分别选三个共享文件夹 → 版本确认 `v3.2.4` → 应用（渲染到新路径）→ 启动；
+6. **验证**：状态 Running、三容器 healthy、运行版本 3.2.4、compose 文件路径指向新共享文件夹、上传一张测试照片确认落在 `immich-photos` 物理路径、重启 NAS 后栈自动拉起；
+7. 旧 `docker/immich/` 目录保留观察一周，确认无新增写入后归档删除。
+
+**回滚**：`apt-get install` 降回 8.0.1 deb 即可——旧路径键仍在 config.xml，8.0.1 忽略 `*Ref` 键，在旧路径启动栈即恢复。**前提：升级全程不删旧目录。**
+
+**测试环境（无真实数据）建议 purge 重建**：卸载 8.0.1（数据目录保留）→ 装 8.0.2 → 建共享文件夹 → 全新走一遍配置与部署，顺带完成 8.0.2 真机验证。
 
 ### 测试环境实测记录（2026-10-04，`${TEST_ENV_IP_ADDRESS}`）
 

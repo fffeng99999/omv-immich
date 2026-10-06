@@ -20,12 +20,12 @@ set -e
 #   <services>
 #     <immich>
 #       <enable>0|1</enable>
-#       <version>release</version>
+#       <version>v3.2.4</version>
 #       <port>2283</port>
 #       <timeZone>Etc/UTC</timeZone>
-#       <composeDir>/srv/docker/immich</composeDir>
-#       <uploadLocation>/srv/docker/immich/upload</uploadLocation>
-#       <dbDataLocation>/srv/docker/immich/db</dbDataLocation>
+#       <composeDirRef>uuid-or-empty</composeDirRef>
+#       <uploadRef>uuid-or-empty</uploadRef>
+#       <dbRef>uuid-or-empty</dbRef>
 #       <dbPassword>...</dbPassword>
 #       <dbUsername>postgres</dbUsername>
 #       <dbDatabaseName>immich</dbDatabaseName>
@@ -37,12 +37,12 @@ set -e
 if ! omv_config_exists "/config/services/immich"; then
 	omv_config_add_node "/config/services" "immich"
 	omv_config_add_key "/config/services/immich" "enable" "0"
-	omv_config_add_key "/config/services/immich" "version" "release"
+	omv_config_add_key "/config/services/immich" "version" "v3.2.4"
 	omv_config_add_key "/config/services/immich" "port" "2283"
 	omv_config_add_key "/config/services/immich" "timeZone" "Etc/UTC"
-	omv_config_add_key "/config/services/immich" "composeDir" "/srv/docker/immich"
-	omv_config_add_key "/config/services/immich" "uploadLocation" "/srv/docker/immich/upload"
-	omv_config_add_key "/config/services/immich" "dbDataLocation" "/srv/docker/immich/db"
+	omv_config_add_key "/config/services/immich" "composeDirRef" ""
+	omv_config_add_key "/config/services/immich" "uploadRef" ""
+	omv_config_add_key "/config/services/immich" "dbRef" ""
 	# Generate a random Postgres password once (A-Za-z0-9 only, as
 	# required by the upstream example.env: openssl rand -hex 16).
 	omv_config_add_key "/config/services/immich" "dbPassword" \

@@ -41,7 +41,7 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
      */
     private $settingsFields = [
         "enable", "version", "port", "timeZone",
-        "composeDir", "uploadLocation", "dbDataLocation",
+        "composeDirRef", "uploadRef", "dbRef",
         "dbPassword", "dbUsername", "dbDatabaseName", "mlEnable"
     ];
 
@@ -87,10 +87,15 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
         ], $context);
     }
 
-    private function getComposeDir(array $object): string
+    /**
+     * The storage properties hold shared folder references (UUIDs).
+     * The ctl helper resolves them to real paths via the OMV helper
+     * functions (omv_get_sharedfolder_path), so this RPC only passes
+     * the reference through.
+     */
+    private function getDirRef(array $object): string
     {
-        $dir = $object["composeDir"] ?? "";
-        return ("" !== $dir) ? $dir : "/srv/docker/immich";
+        return (string)($object["composeDirRef"] ?? "");
     }
 
     /**
@@ -118,25 +123,30 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
         $this->validateMethodContext($context, ["role" => OMV_ROLE_ADMINISTRATOR]);
 
         $object = $this->getSettingsObject($context);
-        $dir = $this->getComposeDir($object);
+        $dirRef = $this->getDirRef($object);
 
         // Stack state. The status text is returned as the English msgid;
         // the Workbench form page runs it through the 'translate' filter
         // (request.get.transform merges the transformed keys into the
         // response, so all other fields are preserved).
-        list(, $statusOut) = $this->runCtl(["status", $dir], false);
+        list(, $statusOut) = $this->runCtl(["status", $dirRef], false);
         $state = trim(implode("\n", $statusOut));
-        if (!in_array($state, ["running", "partial", "stopped"])) {
+        if (!in_array($state, ["running", "partial", "stopped", "notinstalled"])) {
             $state = "stopped";
         }
         $object["running"] = ("running" === $state);
-        $object["statusText"] = ucfirst($state);
+        $object["statusText"] = [
+            "running" => "Running",
+            "partial" => "Partial",
+            "stopped" => "Stopped",
+            "notinstalled" => "Not installed"
+        ][$state];
 
-        list(, $versionOut) = $this->runCtl(["version", $dir], false);
+        list(, $versionOut) = $this->runCtl(["version", $dirRef], false);
         $runningVersion = $this->parseVersion($versionOut);
         $object["runningVersion"] = $runningVersion;
 
-        list(, $latestOut) = $this->runCtl(["latest", $dir], false);
+        list(, $latestOut) = $this->runCtl(["latest", $dirRef], false);
         $latestVersion = trim(implode("\n", $latestOut));
         $object["latestVersion"] = $latestVersion;
 
@@ -151,7 +161,12 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
         }
         $object["updateAvailable"] = $updateAvailable;
 
-        $object["composeFile"] = $dir."/docker-compose.yml";
+        // Resolve the compose directory through the ctl helper (the
+        // storage properties hold shared folder references). Empty
+        // while no shared folder is selected.
+        list(, $pathOut) = $this->runCtl(["path", $dirRef], false);
+        $dir = trim(implode("\n", $pathOut));
+        $object["composeFile"] = ("" !== $dir) ? $dir."/docker-compose.yml" : "";
 
         return $object;
     }
@@ -174,7 +189,7 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
     private function execCtlTask($context, string $op): string
     {
         $settings = $this->getSettingsObject($context);
-        $args = [$op, $this->getComposeDir($settings)];
+        $args = [$op, $this->getDirRef($settings)];
         return $this->execBgProc(
             function ($bgStatusFilename, $bgOutputFilename) use ($args) {
                 $cmd = new \OMV\System\Process(self::CTL, $args);

@@ -1,3 +1,23 @@
+openmediavault-immich (8.0.2) stable; urgency=medium
+
+  * Storage configuration now uses shared folder references
+    (sharedFolderSelect dropdowns) instead of plain path inputs: the
+    stack files, the photo library and the PostgreSQL data each point
+    to a shared folder on the data array. The ctl helper resolves the
+    references with omv_get_sharedfolder_path, the Salt state with
+    omv_conf.get_sharedfolder_path, and the engine module listens for
+    shared folder changes to re-render on Apply.
+  * Upgrade note for 8.0.1 installations: re-select the three shared
+    folders on the settings page and apply the changes. Existing data
+    is not moved automatically -- either create the shared folders at
+    the previous locations or migrate the data before starting the
+    stack again.
+  * Pin the default image version to v3.2.4 (was the floating
+    'release' tag) and report 'notinstalled' while the stack files are
+    not rendered yet.
+
+ -- fffeng99999  Sun, 04 Oct 2026 14:30:00 +0800
+
 openmediavault-immich (8.0.1) stable; urgency=medium
 
   * Initial release: Immich photo library management plugin for

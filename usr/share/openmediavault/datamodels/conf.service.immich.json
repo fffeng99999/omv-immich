@@ -13,7 +13,7 @@
 		},
 		"version": {
 			"type": "string",
-			"default": "release"
+			"default": "v3.2.4"
 		},
 		"port": {
 			"type": "integer",
@@ -25,17 +25,38 @@
 			"type": "string",
 			"default": "Etc/UTC"
 		},
-		"composeDir": {
+		"composeDirRef": {
 			"type": "string",
-			"default": "/srv/docker/immich"
+			"oneOf": [{
+				"type": "string",
+				"format": "uuidv4"
+			}, {
+				"type": "string",
+				"maxLength": 0
+			}],
+			"default": ""
 		},
-		"uploadLocation": {
+		"uploadRef": {
 			"type": "string",
-			"default": "/srv/docker/immich/upload"
+			"oneOf": [{
+				"type": "string",
+				"format": "uuidv4"
+			}, {
+				"type": "string",
+				"maxLength": 0
+			}],
+			"default": ""
 		},
-		"dbDataLocation": {
+		"dbRef": {
 			"type": "string",
-			"default": "/srv/docker/immich/db"
+			"oneOf": [{
+				"type": "string",
+				"format": "uuidv4"
+			}, {
+				"type": "string",
+				"maxLength": 0
+			}],
+			"default": ""
 		},
 		"dbPassword": {
 			"type": "string",

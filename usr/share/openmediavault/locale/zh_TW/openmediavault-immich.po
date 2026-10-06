@@ -32,6 +32,9 @@ msgstr "已停止"
 msgid "Partial"
 msgstr "部分執行"
 
+msgid "Not installed"
+msgstr "未安裝"
+
 msgid "Immich is a self-hosted photo and video backup solution. Save the settings, click Apply to render the Compose files, then use the buttons below to deploy and manage the stack. While the stack is running it starts automatically at boot."
 msgstr "Immich 是自架照片/影片備份方案。先儲存設定，點「套用」渲染 Compose 檔案，再用下方按鈕部署與管理堆疊。堆疊執行期間開機自動啟動。"
 
@@ -80,23 +83,23 @@ msgstr "新增 immich-machine-learning 容器，提供人臉辨識、智慧搜�
 msgid "Storage"
 msgstr "儲存"
 
-msgid "Compose directory"
-msgstr "Compose 目錄"
+msgid "Stack files shared folder"
+msgstr "堆疊檔案共享資料夾"
 
-msgid "Directory where .env and docker-compose.yml are rendered. The stack is started from here."
-msgstr ".env 與 docker-compose.yml 的渲染目錄。堆疊自此目錄啟動。"
+msgid "Shared folder where .env and docker-compose.yml are rendered. Create one on the data array, e.g. 'immich-stack'."
+msgstr ".env 與 docker-compose.yml 的渲染位置。請在資料陣列上建立，例如 immich-stack。"
 
-msgid "Upload location"
-msgstr "照片儲存目錄"
+msgid "Photo library shared folder"
+msgstr "照片庫共享資料夾"
 
-msgid "Host directory where photos and videos are stored (container path /data). Must be on a local filesystem."
-msgstr "照片/影片的宿主機儲存目錄（容器內路徑 /data）。必須位於本機檔案系統。"
+msgid "Shared folder where photos and videos are stored (container path /data). Create a dedicated folder on the data array."
+msgstr "照片/影片的儲存位置（容器內路徑 /data）。請在資料陣列上建立專用資料夾。"
 
-msgid "Database location"
-msgstr "資料庫目錄"
+msgid "Database shared folder"
+msgstr "資料庫共享資料夾"
 
-msgid "Host directory for the PostgreSQL data. Must be on a local filesystem (NFS/SMB/CIFS shares are not supported by Immich)."
-msgstr "PostgreSQL 資料的宿主機目錄。必須位於本機檔案系統（Immich 不支援 NFS/SMB/CIFS 網路共用）。"
+msgid "Shared folder for the PostgreSQL data. Must be on a local filesystem (NFS/SMB/CIFS shares are not supported by Immich)."
+msgstr "PostgreSQL 資料的儲存位置。必須位於本機檔案系統（Immich 不支援 NFS/SMB/CIFS 網路共用）。"
 
 msgid "Database"
 msgstr "資料庫"

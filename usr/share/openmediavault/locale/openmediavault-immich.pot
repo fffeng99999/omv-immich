@@ -33,6 +33,9 @@ msgstr ""
 msgid "Partial"
 msgstr ""
 
+msgid "Not installed"
+msgstr ""
+
 msgid "Immich is a self-hosted photo and video backup solution. Save the settings, click Apply to render the Compose files, then use the buttons below to deploy and manage the stack. While the stack is running it starts automatically at boot."
 msgstr ""
 
@@ -81,22 +84,22 @@ msgstr ""
 msgid "Storage"
 msgstr ""
 
-msgid "Compose directory"
+msgid "Stack files shared folder"
 msgstr ""
 
-msgid "Directory where .env and docker-compose.yml are rendered. The stack is started from here."
+msgid "Shared folder where .env and docker-compose.yml are rendered. Create one on the data array, e.g. 'immich-stack'."
 msgstr ""
 
-msgid "Upload location"
+msgid "Photo library shared folder"
 msgstr ""
 
-msgid "Host directory where photos and videos are stored (container path /data). Must be on a local filesystem."
+msgid "Shared folder where photos and videos are stored (container path /data). Create a dedicated folder on the data array."
 msgstr ""
 
-msgid "Database location"
+msgid "Database shared folder"
 msgstr ""
 
-msgid "Host directory for the PostgreSQL data. Must be on a local filesystem (NFS/SMB/CIFS shares are not supported by Immich)."
+msgid "Shared folder for the PostgreSQL data. Must be on a local filesystem (NFS/SMB/CIFS shares are not supported by Immich)."
 msgstr ""
 
 msgid "Database"
