@@ -62,6 +62,32 @@
 		"mlEnable": {
 			"type": "boolean",
 			"default": false
+		},
+		"libraries": {
+			"type": "object",
+			"properties": {
+				"library": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"uuid": {
+								"type": "string",
+								"format": "uuidv4"
+							},
+							"sharedfolderref": {
+								"type": "string"
+							},
+							"containerPath": {
+								"type": "string"
+							},
+							"readonly": {
+								"type": "boolean"
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 }

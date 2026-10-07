@@ -1,3 +1,17 @@
+openmediavault-immich (8.0.10) stable; urgency=medium
+
+  * Fix the external library support added in 8.0.9: the parent data
+    model conf.service.immich did not declare the <libraries> child
+    node, so reading the settings ("Config get conf.service.immich")
+    failed with "The property 'libraries.library.uuid' does not exist
+    in the model 'conf.service.immich'". Saving an external library
+    entry therefore wrote the configuration but the Compose stack was
+    not republished. The parent model now declares the libraries
+    container (the same pattern the frpc plugin uses for its proxies).
+    Found on the test environment.
+
+ -- fffeng99999 <fffeng99999@users.noreply.github.com>  Tue, 07 Oct 2026 22:30:00 +0800
+
 openmediavault-immich (8.0.9) stable; urgency=medium
 
   * Add support for Immich external libraries. External libraries let
