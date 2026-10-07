@@ -1,0 +1,8 @@
+version: "1.0"
+type: route
+data:
+  url: "/services/immich/libraries/edit/:uuid"
+  title: _("Edit external library")
+  editing: true
+  notificationTitle: _("Updated external library.")
+  component: omv-services-immich-library-form-page

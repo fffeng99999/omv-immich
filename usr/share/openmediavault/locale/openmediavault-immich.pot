@@ -194,3 +194,45 @@ msgstr ""
 
 msgid "Rendered docker-compose.yml"
 msgstr ""
+
+msgid "External libraries"
+msgstr ""
+
+msgid "Add external library"
+msgstr ""
+
+msgid "Added external library."
+msgstr ""
+
+msgid "Edit external library"
+msgstr ""
+
+msgid "Updated external library."
+msgstr ""
+
+msgid "Shared folder"
+msgstr ""
+
+msgid "Container path"
+msgstr ""
+
+msgid "Read-only"
+msgstr ""
+
+msgid "Shared folder holding the photos/videos to expose as an Immich external library (mounted into the server container at the container path below)."
+msgstr ""
+
+msgid "Absolute path inside the Immich server container. Use this exact path when creating the external library in Immich."
+msgstr ""
+
+msgid "Must be an absolute path without a colon (e.g. /mnt/extlib)."
+msgstr ""
+
+msgid "Mount read-only (':ro'), so Immich cannot delete files or write XMP sidecars. Disable to allow deletion and metadata sidecars."
+msgstr ""
+
+msgid "Reminder - after applying the changes, open the Immich web interface, go to Administration, External Libraries, create a library and add the container path below as a folder, then scan it. Remove the read-only option to let Immich delete files or write XMP sidecars."
+msgstr ""
+
+msgid "Photos on other shared folders can be used without copying them into Immich. Configure the mounts on the External libraries page, then create the library in the Immich web interface."
+msgstr ""

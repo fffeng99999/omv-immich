@@ -1,3 +1,29 @@
+openmediavault-immich (8.0.9) stable; urgency=medium
+
+  * Add support for Immich external libraries. External libraries let
+    Immich read photos/videos in place, without copying them into the
+    upload library.
+    - New "External libraries" page (Services -> Immich -> External
+      libraries) to manage any number of mounts: shared folder,
+      container path and a read-only option. Every entry is rendered
+      into the Compose stack as
+      '- ${{ sf:"<shared folder>" }}:<container path>[:ro]'.
+    - New iterable data model conf.service.immich.library and the RPC
+      methods getLibraries/getLibrary/setLibrary/deleteLibrary. The
+      container path must be absolute, must not contain a colon, must
+      not be "/" or "/data" and must be unique.
+    - Changing an entry republishes the Compose stack; after Apply the
+      containers are recreated with the new mounts. Shared folder
+      changes are followed automatically through the Compose
+      placeholder.
+    - The settings page points to the new page. After applying, create
+      the library in the Immich web interface (Administration ->
+      External Libraries) using the configured container path.
+    - The 8.0.9 migration adds the <libraries> node to existing
+      configurations; fresh installations get it from create.d.
+
+ -- fffeng99999 <fffeng99999@users.noreply.github.com>  Tue, 07 Oct 2026 22:00:00 +0800
+
 openmediavault-immich (8.0.8) stable; urgency=medium
 
   * Require openmediavault-compose (>= 8.2.0): the stack lifecycle runs

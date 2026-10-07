@@ -1,0 +1,11 @@
+version: "1.0"
+type: navigation-item
+data:
+  path: "services.immich.libraries"
+  text: _("External libraries")
+  position: 20
+  icon: "mdi:folder-multiple-image"
+  url: "/services/immich/libraries"
+  permissions:
+    role:
+    - admin

@@ -193,3 +193,45 @@ msgstr "Immich 日誌"
 
 msgid "Rendered docker-compose.yml"
 msgstr "渲染出的 docker-compose.yml"
+
+msgid "External libraries"
+msgstr "外部媒體庫"
+
+msgid "Add external library"
+msgstr "新增外部媒體庫"
+
+msgid "Added external library."
+msgstr "已新增外部媒體庫。"
+
+msgid "Edit external library"
+msgstr "編輯外部媒體庫"
+
+msgid "Updated external library."
+msgstr "已更新外部媒體庫。"
+
+msgid "Shared folder"
+msgstr "共用資料夾"
+
+msgid "Container path"
+msgstr "容器內路徑"
+
+msgid "Read-only"
+msgstr "唯讀"
+
+msgid "Shared folder holding the photos/videos to expose as an Immich external library (mounted into the server container at the container path below)."
+msgstr "存放要作為 Immich 外部媒體庫的照片/影片的共用資料夾（會依下面的容器內路徑掛載進 server 容器）。"
+
+msgid "Absolute path inside the Immich server container. Use this exact path when creating the external library in Immich."
+msgstr "Immich server 容器內的絕對路徑。在 Immich 建立外部媒體庫時請填這個路徑。"
+
+msgid "Must be an absolute path without a colon (e.g. /mnt/extlib)."
+msgstr "必須是絕對路徑且不能包含冒號（例如 /mnt/extlib）。"
+
+msgid "Mount read-only (':ro'), so Immich cannot delete files or write XMP sidecars. Disable to allow deletion and metadata sidecars."
+msgstr "以唯讀方式掛載（':ro'），Immich 將無法刪除檔案或寫入 XMP 側車檔；取消後可刪除並寫入中繼資料。"
+
+msgid "Reminder - after applying the changes, open the Immich web interface, go to Administration, External Libraries, create a library and add the container path below as a folder, then scan it. Remove the read-only option to let Immich delete files or write XMP sidecars."
+msgstr "提醒——套用變更後，開啟 Immich 網頁介面，進入「管理 → 外部媒體庫」，建立媒體庫並把下面的容器內路徑加入為資料夾，然後掃描。若要讓 Immich 能刪除檔案或寫入 XMP 側車檔，請取消「唯讀」。"
+
+msgid "Photos on other shared folders can be used without copying them into Immich. Configure the mounts on the External libraries page, then create the library in the Immich web interface."
+msgstr "其它共用資料夾裡的照片可以不複製進 Immich 直接使用。請在「外部媒體庫」頁設定掛載，然後到 Immich 網頁介面建立媒體庫。"

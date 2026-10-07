@@ -86,6 +86,10 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
     {
         $this->registerMethod("get");
         $this->registerMethod("set");
+        $this->registerMethod("getLibraries");
+        $this->registerMethod("getLibrary");
+        $this->registerMethod("setLibrary");
+        $this->registerMethod("deleteLibrary");
         $this->registerMethod("start");
         $this->registerMethod("stop");
         $this->registerMethod("restart");
@@ -249,6 +253,117 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
     }
 
     /**
+     * External library mounts (list, for the datatable). Each row is
+     * enriched with the resolved shared folder name so the list does
+     * not have to resolve references on the client side.
+     */
+    public function getLibraries($params, $context)
+    {
+        $this->validateMethodContext($context, ["role" => OMV_ROLE_ADMINISTRATOR]);
+        $this->validateMethodParams($params, "rpc.common.getlist");
+        $db = \OMV\Config\Database::getInstance();
+        $result = [];
+        foreach ($db->get("conf.service.immich.library") as $object) {
+            $entry = $object->getAssoc();
+            $entry["sharedFolderName"] = $this->sharedFolderName(
+                $context, (string)($entry["sharedfolderref"] ?? "")
+            );
+            $result[] = $entry;
+        }
+        return $this->applyFilter($result,
+            $params["start"], $params["limit"],
+            $params["sortfield"], $params["sortdir"]);
+    }
+
+    /**
+     * A single external library mount by uuid (for the edit form).
+     */
+    public function getLibrary($params, $context)
+    {
+        $this->validateMethodContext($context, ["role" => OMV_ROLE_ADMINISTRATOR]);
+        $this->validateMethodParams($params, "rpc.common.objectuuid");
+        $db = \OMV\Config\Database::getInstance();
+        return $db->get("conf.service.immich.library",
+            $params["uuid"])->getAssoc();
+    }
+
+    /**
+     * Create or update an external library mount. The stack is
+     * republished afterwards so the rendered compose file contains the
+     * new mount immediately (the user still has to apply the changes).
+     */
+    public function setLibrary($params, $context)
+    {
+        $this->validateMethodContext($context, ["role" => OMV_ROLE_ADMINISTRATOR]);
+
+        $ref = trim((string)($params["sharedfolderref"] ?? ""));
+        $path = trim((string)($params["containerPath"] ?? ""));
+
+        if ("" === $path) {
+            throw new \OMV\Exception(
+                "The container path must not be empty."
+            );
+        }
+        if (("/" !== substr($path, 0, 1)) || (false !== strpos($path, ":"))) {
+            throw new \OMV\Exception(
+                "The container path '%s' must be an absolute path without ".
+                "a colon.", $path
+            );
+        }
+        if (("/" === $path) || ("/data" === $path)) {
+            throw new \OMV\Exception(
+                "The container path '%s' is not allowed.", $path
+            );
+        }
+        if ("" === $ref) {
+            throw new \OMV\Exception(
+                "A shared folder must be selected."
+            );
+        }
+        if ("" === $this->sharedFolderName($context, $ref)) {
+            throw new \OMV\Exception(
+                "The selected shared folder could not be resolved."
+            );
+        }
+
+        $object = new \OMV\Config\ConfigObject("conf.service.immich.library");
+        $object->setAssoc($params);
+
+        // The container path must be unique: two mounts on the same
+        // container path would shadow each other inside the container.
+        $db = \OMV\Config\Database::getInstance();
+        foreach ($db->get("conf.service.immich.library") as $existing) {
+            if ($existing->get("containerPath") === $object->get("containerPath")
+                && $existing->get("uuid") !== $object->get("uuid")) {
+                throw new \OMV\Exception(
+                    "An external library with the container path '%s' ".
+                    "already exists.", $object->get("containerPath")
+                );
+            }
+        }
+
+        $db->set($object);
+
+        $this->syncComposeStack($context, $this->getSettingsObject($context));
+
+        return $object->getAssoc();
+    }
+
+    /**
+     * Delete an external library mount and republish the stack.
+     */
+    public function deleteLibrary($params, $context)
+    {
+        $this->validateMethodContext($context, ["role" => OMV_ROLE_ADMINISTRATOR]);
+        $this->validateMethodParams($params, "rpc.common.objectuuid");
+        $db = \OMV\Config\Database::getInstance();
+        $object = $db->get("conf.service.immich.library", $params["uuid"]);
+        $db->delete($object);
+
+        $this->syncComposeStack($context, $this->getSettingsObject($context));
+    }
+
+    /**
      * Create or update the Immich stack in the openmediavault-compose
      * plugin. The stack body and environment reference the photo library
      * and database shared folders through the Compose plugin's
@@ -277,7 +392,9 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
             "description" => "Immich photo library (managed by the ".
                 "openmediavault-immich plugin)",
             "body" => $this->buildComposeBody($uploadName, $dbName,
-                !empty($config["mlEnable"])),
+                !empty($config["mlEnable"]),
+                $this->buildLibraryVolumes($context,
+                    $this->getLibraryList())),
             "showenv" => true,
             "env" => $this->buildComposeEnv($config, $uploadName, $dbName),
             "showoverride" => false,
@@ -344,12 +461,65 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
     }
 
     /**
+     * All external library entries from the configuration database,
+     * sorted by uuid so that the rendered stack stays stable.
+     */
+    private function getLibraryList(): array
+    {
+        $db = \OMV\Config\Database::getInstance();
+        $libraries = [];
+        foreach ($db->get("conf.service.immich.library") as $object) {
+            $libraries[] = $object->getAssoc();
+        }
+        usort($libraries, function ($a, $b) {
+            return strcmp((string)($a["uuid"] ?? ""), (string)($b["uuid"] ?? ""));
+        });
+        return $libraries;
+    }
+
+    /**
+     * Volume mount strings for the external library entries. The host
+     * side uses the Compose plugin placeholder so the Compose plugin
+     * resolves the shared folder path on deploy; read-only entries get
+     * a ':ro' suffix. Entries without a shared folder or container path
+     * are skipped.
+     */
+    private function buildLibraryVolumes($context, array $libraries): array
+    {
+        $volumes = [];
+        foreach ($libraries as $library) {
+            $ref = (string)($library["sharedfolderref"] ?? "");
+            $path = trim((string)($library["containerPath"] ?? ""));
+            if (("" === $ref) || ("" === $path)) {
+                continue;
+            }
+            $name = $this->sharedFolderName($context, $ref);
+            if ("" === $name) {
+                throw new \OMV\Exception(sprintf(
+                    "The shared folder of the external library entry ".
+                    "'%s' could not be resolved.", $path
+                ));
+            }
+            $volume = sprintf('${{ sf:"%s" }}:%s', $name, $path);
+            if (!empty($library["readonly"])) {
+                $volume .= ":ro";
+            }
+            $volumes[] = $volume;
+        }
+        return $volumes;
+    }
+
+    /**
      * Docker Compose file body for the Immich stack (no auto-generated
      * header; the Compose plugin prepends its own).
      */
     private function buildComposeBody(string $uploadName, string $dbName,
-        bool $machineLearning): string
+        bool $machineLearning, array $libraryVolumes = []): string
     {
+        $libraryLines = "";
+        foreach ($libraryVolumes as $volume) {
+            $libraryLines .= "      - ".$volume."\n";
+        }
         $body = <<<'YAML'
 name: immich
 
@@ -359,7 +529,7 @@ services:
     image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
     volumes:
       - ${{ sf:"%%UPLOAD%%" }}:/data
-      - /etc/localtime:/etc/localtime:ro
+%%LIBRARYVOLUMES%%      - /etc/localtime:/etc/localtime:ro
     env_file:
       - immich.env
     ports:
@@ -397,7 +567,8 @@ services:
 YAML;
         $body = strtr($body, [
             "%%UPLOAD%%" => $uploadName,
-            "%%DB%%" => $dbName
+            "%%DB%%" => $dbName,
+            "%%LIBRARYVOLUMES%%" => $libraryLines
         ]);
 
         if ($machineLearning) {

@@ -63,6 +63,13 @@ class Immich extends \OMV\Engine\Module\ServiceAbstract
 			"org.openmediavault.conf.service.immich",
 			[$this, "setDirty"]
 		);
+		// Editing the external library mounts must re-run the Salt
+		// state as well: the stack is re-rendered with the new mounts.
+		$dispatcher->addListener(
+			OMV_NOTIFY_MODIFY,
+			"org.openmediavault.conf.service.immich.library",
+			[$this, "setDirty"]
+		);
 		// The stack references its shared folders through the Compose
 		// plugin placeholder, so a modified shared folder must mark the
 		// service dirty when it is one of the referenced ones.
@@ -85,6 +92,14 @@ class Immich extends \OMV\Engine\Module\ServiceAbstract
 				$this->setDirty();
 				return;
 			}
+		}
+		// External library mounts referencing the modified shared folder.
+		if ($db->exists("conf.service.immich.library", [
+			"operator" => "stringEquals",
+			"arg0" => "sharedfolderref",
+			"arg1" => $object["uuid"]
+		])) {
+			$this->setDirty();
 		}
 	}
 }

@@ -29,6 +29,7 @@ set -e
 #       <dbUsername>postgres</dbUsername>
 #       <dbDatabaseName>immich</dbDatabaseName>
 #       <mlEnable>0|1</mlEnable>
+#       <libraries></libraries>
 #     </immich>
 #   </services>
 # </config>
@@ -48,6 +49,14 @@ if ! omv_config_exists "/config/services/immich"; then
 	omv_config_add_key "/config/services/immich" "dbUsername" "postgres"
 	omv_config_add_key "/config/services/immich" "dbDatabaseName" "immich"
 	omv_config_add_key "/config/services/immich" "mlEnable" "0"
+fi
+
+# The external library mounts live in a child container node that is
+# created on demand. The guard also covers existing installations
+# (see the 8.0.9 migration script).
+if omv_config_exists "/config/services/immich" && \
+		! omv_config_exists "/config/services/immich/libraries"; then
+	omv_config_add_node "/config/services/immich" "libraries"
 fi
 
 exit 0

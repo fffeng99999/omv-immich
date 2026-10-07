@@ -1,0 +1,7 @@
+version: "1.0"
+type: route
+data:
+  url: "/services/immich/libraries/create"
+  title: _("Add external library")
+  notificationTitle: _("Added external library.")
+  component: omv-services-immich-library-form-page

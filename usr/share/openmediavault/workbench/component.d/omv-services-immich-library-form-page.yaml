@@ -1,0 +1,50 @@
+version: "1.0"
+type: component
+data:
+  name: omv-services-immich-library-form-page
+  type: formPage
+  config:
+    request:
+      service: Immich
+      get:
+        method: getLibrary
+        params:
+          uuid: "{{ _routeParams.uuid }}"
+      post:
+        method: setLibrary
+    hints:
+      - type: info
+        text: _("Reminder - after applying the changes, open the Immich web interface, go to Administration, External Libraries, create a library and add the container path below as a folder, then scan it. Remove the read-only option to let Immich delete files or write XMP sidecars.")
+        dismissible: true
+        stateId: 3d9a5b17-8c24-4f6e-a0b3-5e7c1d284f60
+    fields:
+      - type: confObjUuid
+      - type: sharedFolderSelect
+        name: sharedfolderref
+        label: _("Shared folder")
+        hint: _("Shared folder holding the photos/videos to expose as an Immich external library (mounted into the server container at the container path below).")
+        hasEmptyOption: true
+        value: ""
+        validators:
+          required: true
+      - type: textInput
+        name: containerPath
+        label: _("Container path")
+        hint: _("Absolute path inside the Immich server container. Use this exact path when creating the external library in Immich.")
+        value: "/mnt/extlib"
+        validators:
+          required: true
+          pattern:
+            pattern: "^/[^:]*$"
+            errorData: _("Must be an absolute path without a colon (e.g. /mnt/extlib).")
+      - type: checkbox
+        name: readonly
+        label: _("Read-only")
+        hint: _("Mount read-only (':ro'), so Immich cannot delete files or write XMP sidecars. Disable to allow deletion and metadata sidecars.")
+        value: true
+    buttons:
+      - template: cancel
+        execute:
+          type: url
+          url: "/services/immich/libraries"
+      - template: submit

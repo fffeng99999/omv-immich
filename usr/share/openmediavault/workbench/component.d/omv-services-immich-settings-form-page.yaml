@@ -17,6 +17,10 @@ data:
         text: _("Immich is a self-hosted photo and video backup solution. The stack is created in the Compose plugin (Services -> Compose -> Files) where it can also be inspected or edited; configure the Compose plugin shared folder first. Save the settings, click Apply, then use the buttons below to deploy and manage the stack. While the stack is running it starts automatically at boot.")
         dismissible: true
         stateId: 5b8e2c1a-9f3d-4c47-a2b6-0d84e13f7c55
+      - type: info
+        text: _("Photos on other shared folders can be used without copying them into Immich. Configure the mounts on the External libraries page, then create the library in the Immich web interface.")
+        dismissible: true
+        stateId: 6a2f8c41-9d73-4b58-8e12-4c7a0f3d5b96
     fields:
       - type: divider
         title: _("Status")
