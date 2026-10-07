@@ -35,8 +35,8 @@ msgstr "部分运行"
 msgid "Not installed"
 msgstr "未安装"
 
-msgid "Immich is a self-hosted photo and video backup solution. Save the settings, click Apply to render the Compose files, then use the buttons below to deploy and manage the stack. While the stack is running it starts automatically at boot."
-msgstr "Immich 是自托管照片/视频备份方案。先保存设置，点「应用」渲染 Compose 文件，再用下方按钮部署和管理栈。栈运行期间开机自动启动。"
+msgid "Immich is a self-hosted photo and video backup solution. The stack is created in the Compose plugin (Services -> Compose -> Files) where it can also be inspected or edited; configure the Compose plugin shared folder first. Save the settings, click Apply, then use the buttons below to deploy and manage the stack. While the stack is running it starts automatically at boot."
+msgstr "Immich 是自托管照片/视频备份方案。栈会在 Compose 插件中创建（服务 → Compose → 文件），也可在那里查看或编辑；请先配置 Compose 插件的共享文件夹。保存设置并点「应用」后，用下方按钮部署和管理栈。栈运行期间开机自动启动。"
 
 msgid "Status"
 msgstr "状态"
@@ -53,8 +53,8 @@ msgstr "最新版本"
 msgid "Update available"
 msgstr "有可用更新"
 
-msgid "Generated compose file"
-msgstr "生成的 Compose 文件"
+msgid "Stack file (Compose plugin)"
+msgstr "栈文件（Compose 插件）"
 
 msgid "Service"
 msgstr "服务"
@@ -62,8 +62,8 @@ msgstr "服务"
 msgid "Enabled"
 msgstr "启用"
 
-msgid "Automatically manage the stack from OMV. On Apply the Compose files are rendered and, when the settings changed, the stack is recreated. Disabling the service removes the containers on Apply (photos and database are kept)."
-msgstr "由 OMV 自动管理栈：点「应用」渲染 Compose 文件，设置有变化时自动重建栈。停用服务会在「应用」时移除容器（照片与数据库保留）。"
+msgid "Automatically manage the stack from OMV. On Apply the stack is (re)created; disabling the service removes the containers on Apply (photos and database are kept)."
+msgstr "由 OMV 自动管理栈：点「应用」时创建/重建栈。停用服务会在「应用」时移除容器（照片与数据库保留）。"
 
 msgid "Version"
 msgstr "版本"
@@ -83,17 +83,11 @@ msgstr "添加 immich-machine-learning 容器，提供人脸识别、智能搜�
 msgid "Storage"
 msgstr "存储"
 
-msgid "Stack files shared folder"
-msgstr "栈文件共享文件夹"
-
-msgid "Shared folder where .env and docker-compose.yml are rendered. Create one on the data array, e.g. 'immich-stack'."
-msgstr ".env 与 docker-compose.yml 的渲染位置。请在数据阵列上创建，例如 immich-stack。"
-
 msgid "Photo library shared folder"
 msgstr "照片库共享文件夹"
 
-msgid "Shared folder where photos and videos are stored (container path /data). The stack files and the database folder are handled the same way. Select the new folder in the form but do NOT save yet - click 'Test directories' to validate the changed folders and 'Migrate data' to copy them. Save only after the migration succeeded; the data in the old folders is removed when the settings are saved."
-msgstr "存放照片和视频的共享文件夹（容器内路径 /data）。上面的 Stack 文件目录和下面的数据库目录同理。在表单里选中新文件夹但不要保存——点「测试目录」校验已改动的文件夹，再点「迁移数据」搬运。确认迁移成功后才点保存；保存设置时会删除旧文件夹里的数据。"
+msgid "Shared folder where photos and videos are stored (container path /data). To move the photo library or the database folder, select the new folder in the form but do NOT save yet - click 'Test directories' to validate the changed folders and 'Migrate data' to copy them. Save only after the migration succeeded; the data in the old folders is removed when the settings are saved."
+msgstr "存放照片和视频的共享文件夹（容器内路径 /data）。要搬移照片库或数据库目录：在表单里选中新文件夹但不要保存——点「测试目录」校验已改动的文件夹，再点「迁移数据」搬运。确认迁移成功后才点保存；保存设置时会删除旧文件夹里的数据。"
 
 msgid "Test directories"
 msgstr "测试目录"

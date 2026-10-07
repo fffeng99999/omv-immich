@@ -3,7 +3,7 @@
 # This file is part of OpenMediaVault.
 #
 # @license   https://www.gnu.org/licenses/gpl.html GPL Version 3
-# @author    ${GITHUB_USER}
+# @author    ${GITHUB_USER} <${GITHUB_USER}@users.noreply.github.com>
 #
 # OpenMediaVault is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,10 +13,17 @@
 set -e
 
 case "$1" in
-	upgrade|failed-upgrade|abort-install|abort-upgrade|disappear|remove|purge)
-		# The Immich Docker Compose stack and its data (photos, database)
-		# are intentionally never touched here. Removing the plugin leaves
-		# the rendered compose files and running containers in place.
+	remove)
+		# Unregister the Immich stack from the openmediavault-compose
+		# plugin: the Compose plugin stops the containers and removes the
+		# generated stack files. The photo library and database shared
+		# folders are user data and are never touched. Best effort only,
+		# a failure must not block the removal.
+		/usr/sbin/omv-immich-ctl unregister || true
+	;;
+
+	upgrade|failed-upgrade|abort-install|abort-upgrade|disappear|purge)
+		# The stack is kept as is; an upgrade must not interrupt it.
 	;;
 
 	*)

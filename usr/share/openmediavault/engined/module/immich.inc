@@ -4,7 +4,7 @@
  * This file is part of OpenMediaVault.
  *
  * @license   https://www.gnu.org/licenses/gpl.html GPL Version 3
- * @author    ${GITHUB_USER}
+ * @author    ${GITHUB_USER} <${GITHUB_USER}@users.noreply.github.com>
  *
  * OpenMediaVault is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,9 +23,9 @@ namespace Engined\Module;
  * Immich engine module.
  *
  * Marks the module dirty whenever the settings change so that
- * 'Apply changes' re-runs the Salt state (.env / docker-compose.yml
- * rendering), and reports the service status to the global Services
- * monitoring (dashboard).
+ * 'Apply changes' re-runs the Salt state (stack lifecycle via
+ * omv-compose-run), and reports the service status to the global
+ * Services monitoring (dashboard).
  */
 class Immich extends \OMV\Engine\Module\ServiceAbstract
 	implements \OMV\Engine\Notify\IListener, \OMV\Engine\Module\IServiceStatus
@@ -40,7 +40,7 @@ class Immich extends \OMV\Engine\Module\ServiceAbstract
 		$db = \OMV\Config\Database::getInstance();
 		$object = $db->get("conf.service.immich");
 		$cmd = new \OMV\System\Process("/usr/sbin/omv-immich-ctl", [
-			"status", (string)$object->get("composeDirRef")
+			"status"
 		]);
 		$cmd->setRedirect2to1();
 		$cmd->setQuiet(true);
@@ -63,9 +63,9 @@ class Immich extends \OMV\Engine\Module\ServiceAbstract
 			"org.openmediavault.conf.service.immich",
 			[$this, "setDirty"]
 		);
-		// The rendered files depend on the resolved shared folder
-		// paths, so a modified shared folder must mark the service
-		// dirty when it is one of the referenced ones.
+		// The stack references its shared folders through the Compose
+		// plugin placeholder, so a modified shared folder must mark the
+		// service dirty when it is one of the referenced ones.
 		$dispatcher->addListener(
 			OMV_NOTIFY_MODIFY,
 			"org.openmediavault.conf.system.sharedfolder",
@@ -76,7 +76,7 @@ class Immich extends \OMV\Engine\Module\ServiceAbstract
 	public function onSharedFolder($object)
 	{
 		$db = \OMV\Config\Database::getInstance();
-		foreach (["composeDirRef", "uploadRef", "dbRef"] as $prop) {
+		foreach (["uploadRef", "dbRef"] as $prop) {
 			if ($db->exists("conf.service.immich", [
 				"operator" => "stringEquals",
 				"arg0" => $prop,

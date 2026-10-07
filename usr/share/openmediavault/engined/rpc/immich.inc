@@ -4,7 +4,7 @@
  * This file is part of OpenMediaVault.
  *
  * @license   https://www.gnu.org/licenses/gpl.html GPL Version 3
- * @author    ${GITHUB_USER}
+ * @author    ${GITHUB_USER} <${GITHUB_USER}@users.noreply.github.com>
  *
  * OpenMediaVault is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,23 +23,39 @@ namespace Engined\Rpc;
  * Immich photo library RPC service.
  *
  * Settings (conf.service.immich) live in the OMV configuration
- * database. The Salt state /srv/salt/omv/deploy/immich renders .env and
- * docker-compose.yml into the configured compose directory on Apply;
- * the stack itself is managed through 'docker compose' via the
- * /usr/sbin/omv-immich-ctl helper (background tasks with live output).
+ * database. The Immich Docker Compose stack itself is owned by the
+ * openmediavault-compose plugin: on save the plugin publishes (or
+ * updates) the stack through the Compose RPC (Compose.setFile). The
+ * stack therefore follows the Compose plugin conventions
+ * (<compose shared folder>/immich/immich.yml + immich.env, plus the
+ * compose.yml/.env symlinks) and shows up in the Compose web UI
+ * (Services -> Compose -> Files / Services) where it can be inspected,
+ * edited, started and stopped. The plugin never renders those files
+ * itself, so the Compose plugin stays the single writer.
  *
- * The plugin only manages the OMV-side integration (rendering,
- * lifecycle, status); Immich itself is never modified.
+ * The stack is controlled through 'docker compose' (via the
+ * /usr/sbin/omv-compose-run helper used by the Compose plugin) with
+ * the /usr/sbin/omv-immich-ctl helper (background tasks with live
+ * output). The plugin only manages the OMV-side integration
+ * (registration, lifecycle, status, directory migration); Immich
+ * itself is never modified.
  */
 class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
 {
     const CTL = "/usr/sbin/omv-immich-ctl";
 
     /**
+     * Name of the stack in the openmediavault-compose plugin. It is
+     * also the name of the stack directory below the compose shared
+     * folder and the base name of the generated stack files.
+     */
+    const STACK_NAME = "immich";
+
+    /**
      * The shared folder references managed by the plugin. Each of them
      * can be moved to another shared folder from the settings page.
      */
-    const REF_PROPERTIES = ["composeDirRef", "uploadRef", "dbRef"];
+    const REF_PROPERTIES = ["uploadRef", "dbRef"];
 
     /**
      * State directory and request file used by the migration helpers.
@@ -57,7 +73,7 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
      */
     private $settingsFields = [
         "enable", "version", "port", "timeZone",
-        "composeDirRef", "uploadRef", "dbRef",
+        "uploadRef", "dbRef",
         "dbPassword", "dbUsername", "dbDatabaseName", "mlEnable"
     ];
 
@@ -107,17 +123,6 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
     }
 
     /**
-     * The storage properties hold shared folder references (UUIDs).
-     * The ctl helper resolves them to real paths via the OMV helper
-     * functions (omv_get_sharedfolder_path), so this RPC only passes
-     * the reference through.
-     */
-    private function getDirRef(array $object): string
-    {
-        return (string)($object["composeDirRef"] ?? "");
-    }
-
-    /**
      * Format the raw /api/server/version JSON into "major.minor.patch".
      */
     private function parseVersion(array $output): string
@@ -142,13 +147,12 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
         $this->validateMethodContext($context, ["role" => OMV_ROLE_ADMINISTRATOR]);
 
         $object = $this->getSettingsObject($context);
-        $dirRef = $this->getDirRef($object);
 
         // Stack state. The status text is returned as the English msgid;
         // the Workbench form page runs it through the 'translate' filter
         // (request.get.transform merges the transformed keys into the
         // response, so all other fields are preserved).
-        list(, $statusOut) = $this->runCtl(["status", $dirRef], false);
+        list(, $statusOut) = $this->runCtl(["status"], false);
         $state = trim(implode("\n", $statusOut));
         if (!in_array($state, ["running", "partial", "stopped", "notinstalled"])) {
             $state = "stopped";
@@ -161,11 +165,11 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
             "notinstalled" => "Not installed"
         ][$state];
 
-        list(, $versionOut) = $this->runCtl(["version", $dirRef], false);
+        list(, $versionOut) = $this->runCtl(["version"], false);
         $runningVersion = $this->parseVersion($versionOut);
         $object["runningVersion"] = $runningVersion;
 
-        list(, $latestOut) = $this->runCtl(["latest", $dirRef], false);
+        list(, $latestOut) = $this->runCtl(["latest"], false);
         $latestVersion = trim(implode("\n", $latestOut));
         $object["latestVersion"] = $latestVersion;
 
@@ -180,12 +184,13 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
         }
         $object["updateAvailable"] = $updateAvailable;
 
-        // Resolve the compose directory through the ctl helper (the
-        // storage properties hold shared folder references). Empty
-        // while no shared folder is selected.
-        list(, $pathOut) = $this->runCtl(["path", $dirRef], false);
+        // Resolve the stack directory through the ctl helper (it lives
+        // below the Compose plugin shared folder). Empty while the
+        // Compose plugin is not configured.
+        list(, $pathOut) = $this->runCtl(["path"], false);
         $dir = trim(implode("\n", $pathOut));
-        $object["composeFile"] = ("" !== $dir) ? $dir."/docker-compose.yml" : "";
+        $object["composeFile"] = ("" !== $dir)
+            ? $dir."/".self::STACK_NAME.".yml" : "";
 
         return $object;
     }
@@ -229,10 +234,215 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
             $this->writeMigrationState($prop, $state);
         }
 
-        return \OMV\Rpc\Rpc::call("Config", "set", [
+        $result = \OMV\Rpc\Rpc::call("Config", "set", [
             "id" => "conf.service.immich",
             "data" => $data
         ], $context);
+
+        // Publish (create or update) the Immich stack in the Compose
+        // plugin so it follows the openmediavault-compose conventions
+        // and shows up in the Compose web UI. The Compose plugin renders
+        // the stack files; this plugin does not write them itself.
+        $this->syncComposeStack($context, $this->getSettingsObject($context));
+
+        return $result;
+    }
+
+    /**
+     * Create or update the Immich stack in the openmediavault-compose
+     * plugin. The stack body and environment reference the photo library
+     * and database shared folders through the Compose plugin's
+     * '${{ sf:"<name>" }}' placeholder, so a changed shared folder path
+     * is resolved by the Compose plugin on deploy without this plugin
+     * having to re-render anything.
+     */
+    private function syncComposeStack($context, array $config): void
+    {
+        $uploadRef = (string)($config["uploadRef"] ?? "");
+        $dbRef = (string)($config["dbRef"] ?? "");
+        if (("" === $uploadRef) || ("" === $dbRef)) {
+            // Storage not configured yet - nothing to publish.
+            return;
+        }
+        $uploadName = $this->sharedFolderName($context, $uploadRef);
+        $dbName = $this->sharedFolderName($context, $dbRef);
+        if (("" === $uploadName) || ("" === $dbName)) {
+            throw new \OMV\Exception(
+                "The selected shared folders could not be resolved."
+            );
+        }
+
+        $params = [
+            "name" => self::STACK_NAME,
+            "description" => "Immich photo library (managed by the ".
+                "openmediavault-immich plugin)",
+            "body" => $this->buildComposeBody($uploadName, $dbName,
+                !empty($config["mlEnable"])),
+            "showenv" => true,
+            "env" => $this->buildComposeEnv($config, $uploadName, $dbName),
+            "showoverride" => false,
+            "override" => ""
+        ];
+        $uuid = $this->findStackUuid($context);
+        if ("" !== $uuid) {
+            $params["uuid"] = $uuid;
+        }
+
+        try {
+            \OMV\Rpc\Rpc::call("Compose", "setFile", $params, $context);
+        } catch (\Exception $e) {
+            throw new \OMV\Exception(sprintf(
+                "The Immich stack could not be registered in the Compose ".
+                "plugin: %s. Install openmediavault-compose and set the ".
+                "shared folder for the compose files (Services -> Compose ".
+                "-> Settings) first.",
+                $e->getMessage()
+            ));
+        }
+    }
+
+    /**
+     * UUID of the Immich stack in the Compose plugin (empty when it does
+     * not exist yet).
+     */
+    private function findStackUuid($context): string
+    {
+        $files = \OMV\Rpc\Rpc::call("Config", "get", [
+            "id" => "conf.service.compose.file"
+        ], $context);
+        if (!is_array($files)) {
+            return "";
+        }
+        foreach ($files as $file) {
+            if (($file["name"] ?? "") === self::STACK_NAME) {
+                return (string)($file["uuid"] ?? "");
+            }
+        }
+        return "";
+    }
+
+    /**
+     * Name of a shared folder by reference (empty when unknown).
+     */
+    private function sharedFolderName($context, string $ref): string
+    {
+        if ("" === $ref) {
+            return "";
+        }
+        $folders = \OMV\Rpc\Rpc::call("Config", "get", [
+            "id" => "conf.system.sharedfolder"
+        ], $context);
+        if (!is_array($folders)) {
+            return "";
+        }
+        foreach ($folders as $folder) {
+            if (($folder["uuid"] ?? "") === $ref) {
+                return (string)($folder["name"] ?? "");
+            }
+        }
+        return "";
+    }
+
+    /**
+     * Docker Compose file body for the Immich stack (no auto-generated
+     * header; the Compose plugin prepends its own).
+     */
+    private function buildComposeBody(string $uploadName, string $dbName,
+        bool $machineLearning): string
+    {
+        $body = <<<'YAML'
+name: immich
+
+services:
+  immich-server:
+    container_name: immich_server
+    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
+    volumes:
+      - ${{ sf:"%%UPLOAD%%" }}:/data
+      - /etc/localtime:/etc/localtime:ro
+    env_file:
+      - immich.env
+    ports:
+      - '${IMMICH_PORT:-2283}:2283'
+    depends_on:
+      redis:
+        condition: service_healthy
+      database:
+        condition: service_healthy
+    restart: always
+    healthcheck:
+      disable: false
+
+  redis:
+    container_name: immich_redis
+    image: docker.io/valkey/valkey:9
+    healthcheck:
+      test: redis-cli ping | grep -q PONG || exit 1
+    restart: always
+
+  database:
+    container_name: immich_postgres
+    image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_DB: ${DB_DATABASE_NAME}
+      POSTGRES_INITDB_ARGS: '--data-checksums'
+    volumes:
+      - ${{ sf:"%%DB%%" }}:/var/lib/postgresql/data
+    shm_size: 128mb
+    restart: always
+    healthcheck:
+      disable: false
+YAML;
+        $body = strtr($body, [
+            "%%UPLOAD%%" => $uploadName,
+            "%%DB%%" => $dbName
+        ]);
+
+        if ($machineLearning) {
+            $body .= <<<'YAML'
+
+  immich-machine-learning:
+    container_name: immich_machine_learning
+    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
+    env_file:
+      - immich.env
+    volumes:
+      - model-cache:/cache
+    restart: always
+    healthcheck:
+      disable: false
+
+volumes:
+  model-cache:
+YAML;
+        }
+
+        return $body."\n";
+    }
+
+    /**
+     * Environment file content for the Immich stack.
+     */
+    private function buildComposeEnv(array $config, string $uploadName,
+        string $dbName): string
+    {
+        $version = trim((string)($config["version"] ?? ""));
+        if ("" === $version) {
+            $version = "release";
+        }
+        $lines = [
+            'UPLOAD_LOCATION=${{ sf:"'.$uploadName.'" }}',
+            'DB_DATA_LOCATION=${{ sf:"'.$dbName.'" }}',
+            'IMMICH_VERSION='.$version,
+            'TZ='.(string)($config["timeZone"] ?? "Etc/UTC"),
+            'IMMICH_PORT='.(string)($config["port"] ?? "2283"),
+            'DB_PASSWORD='.(string)($config["dbPassword"] ?? ""),
+            'DB_USERNAME='.(string)($config["dbUsername"] ?? "postgres"),
+            'DB_DATABASE_NAME='.(string)($config["dbDatabaseName"] ?? "immich")
+        ];
+        return implode("\n", $lines)."\n";
     }
 
     /**
@@ -242,8 +452,7 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
      */
     private function execCtlTask($context, string $op): string
     {
-        $settings = $this->getSettingsObject($context);
-        return $this->execBgCtl([$op, $this->getDirRef($settings)]);
+        return $this->execBgCtl([$op]);
     }
 
     public function start($params, $context)
@@ -350,7 +559,6 @@ class OMVRpcServiceImmich extends \OMV\Rpc\ServiceAbstract
     private function refLabel(string $prop): string
     {
         $labels = [
-            "composeDirRef" => "stack files",
             "uploadRef" => "photo library",
             "dbRef" => "database"
         ];

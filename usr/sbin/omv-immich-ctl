@@ -3,26 +3,28 @@
 # This file is part of OpenMediaVault.
 #
 # @license   https://www.gnu.org/licenses/gpl.html GPL Version 3
-# @author    ${GITHUB_USER}
+# @author    ${GITHUB_USER} <${GITHUB_USER}@users.noreply.github.com>
 #
 # OpenMediaVault is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # any later version.
 #
-# Control the Immich Docker Compose stack rendered by the OMV plugin.
+# Control the Immich Docker Compose stack registered in the
+# openmediavault-compose plugin.
 #
 # Usage: omv-immich-ctl <cmd> [arg] [arg]
 #
-# Stack commands (up/down/restart/upgrade/status/version/latest/logs/
-# showcompose/path) take the shared folder UUID of the stack files
-# (conf.service.immich composeDirRef); it is resolved to the real path
-# with the OMV helper functions. Pass an empty string when no shared
-# folder is selected yet (only 'status' tolerates it).
+# The stack is owned by the Compose plugin and lives in the Compose
+# plugin shared folder:
+#   <compose shared folder>/immich/immich.yml
+#   <compose shared folder>/immich/immich.env
+# Every stack command is executed through /usr/sbin/omv-compose-run
+# (the helper of the Compose plugin), so the same --file/--env-file
+# arguments are used as from the Compose web UI.
 #
-# Directory migration commands work on the three shared folder
-# references of the plugin (composeDirRef, uploadRef, dbRef). The
-# request file
+# Directory migration commands work on the two shared folder
+# references of the plugin (uploadRef, dbRef). The request file
 #   /var/lib/openmediavault/immich-migrate-request.json
 # names the target folders that are currently selected in the settings
 # form (i.e. not saved yet), keyed by property, e.g.
@@ -47,8 +49,9 @@
 #   version     print the Immich server version JSON from the local API
 #   latest      print the latest upstream release tag from GitHub
 #   logs        print the last 300 log lines of all services
-#   showcompose print the rendered docker-compose.yml
-#   path        print the resolved compose directory (or nothing)
+#   showcompose print the rendered <stack>.yml
+#   path        print the resolved stack directory (or nothing)
+#   unregister  remove the stack from the Compose plugin (used on purge)
 
 set -u
 
@@ -57,8 +60,12 @@ set -u
 STATE_DIR="/var/lib/openmediavault"
 REQUEST_FILE="/var/lib/openmediavault/immich-migrate-request.json"
 
-# The three shared folder references the plugin stores in its settings.
-REFS="composeDirRef uploadRef dbRef"
+# Name of the stack in the Compose plugin; also the stack directory and
+# the base name of the generated files.
+STACK="immich"
+
+# The two shared folder references the plugin stores in its settings.
+REFS="uploadRef dbRef"
 
 # The six directories Immich expects below the upload location, each with
 # a hidden '.immich' marker (see docs.immich.app/administration/system-integrity).
@@ -69,10 +76,10 @@ ARG="${2:-}"
 ARG2="${3:-}"
 
 case "$CMD" in
-	up|down|restart|upgrade|status|version|latest|logs|showcompose|path|testdirall|migrateall|cleanupall|hasdata)
+	up|down|restart|upgrade|status|version|latest|logs|showcompose|path|unregister|testdirall|migrateall|cleanupall|hasdata)
 	;;
 	*)
-		echo "Usage: omv-immich-ctl <up|down|restart|upgrade|status|version|latest|logs|showcompose|path|testdirall|migrateall|cleanupall|hasdata> [arg] [arg]" >&2
+		echo "Usage: omv-immich-ctl <up|down|restart|upgrade|status|version|latest|logs|showcompose|path|unregister|testdirall|migrateall|cleanupall|hasdata> [arg] [arg]" >&2
 		exit 64
 	;;
 esac
@@ -81,12 +88,12 @@ esac
 # Helpers
 # ---------------------------------------------------------------------
 
-# Read a scalar property of conf.service.immich from the config database.
-# The value may be quoted (string) or not (boolean/number), so the quotes
-# are stripped and the result trimmed.
+# Read a scalar property of a configuration object from the config
+# database. The value may be quoted (string) or not (boolean/number), so
+# the quotes are stripped and the result trimmed.
 conf_value() {
-	omv-confdbadm read conf.service.immich 2>/dev/null | tr -d '\n' \
-		| sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\([^,}]*\).*/\1/p" \
+	omv-confdbadm read "$1" 2>/dev/null | tr -d '\n' \
+		| sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\([^,}]*\).*/\1/p" \
 		| tr -d '"' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
 }
 
@@ -142,7 +149,7 @@ print(value if isinstance(value, str) else "")
 # still differs from the saved configuration (i.e. the migration is not
 # committed yet). Empty otherwise.
 state_pending_to() {
-	_cur="$(ref_path "$(conf_value "$1")")"
+	_cur="$(ref_path "$(conf_value conf.service.immich "$1")")"
 	_to="$(state_get "$1" to)"
 	if [ -n "$_to" ] && [ "$_to" != "$_cur" ]; then
 		echo "$_to"
@@ -152,6 +159,19 @@ state_pending_to() {
 # Resolve a shared folder reference to its absolute path.
 ref_path() {
 	omv_get_sharedfolder_path "$1" 2>/dev/null || true
+}
+
+# Resolve the Compose plugin shared folder (the directory that holds all
+# stacks of the openmediavault-compose plugin).
+compose_sf_path() {
+	_ref="$(conf_value conf.service.compose sharedfolderref)"
+	[ -n "$_ref" ] && ref_path "$_ref"
+}
+
+# Directory of the Immich stack inside the Compose shared folder.
+stack_dir() {
+	_sf="$(compose_sf_path)"
+	[ -n "$_sf" ] && echo "$_sf/$STACK"
 }
 
 is_local_fs() {
@@ -185,9 +205,6 @@ human_size() {
 
 prop_label() {
 	case "$1" in
-		composeDirRef)
-			echo "Stack files"
-			;;
 		uploadRef)
 			echo "Photo library"
 			;;
@@ -216,12 +233,6 @@ prop_has_data() {
 			fi
 			return 1
 			;;
-		composeDirRef)
-			if [ -e "$_d/docker-compose.yml" ] || [ -e "$_d/.env" ]; then
-				return 0
-			fi
-			return 1
-			;;
 	esac
 	return 1
 }
@@ -246,14 +257,6 @@ prop_clean() {
 			else
 				echo "  no PostgreSQL data found - nothing to remove"
 			fi
-			;;
-		composeDirRef)
-			for _x in .env docker-compose.yml; do
-				if [ -e "$_d/$_x" ]; then
-					echo "  removing $_x"
-					rm -f "$_d/$_x"
-				fi
-			done
 			;;
 	esac
 }
@@ -318,13 +321,6 @@ check_target() {
 				_rc=1
 			fi
 			;;
-		composeDirRef)
-			if dir_is_empty "$_new"; then
-				echo "ok    Target is empty (the stack files are rendered on Apply)"
-			else
-				echo "ok    Target already contains files; .env and docker-compose.yml are replaced"
-			fi
-			;;
 	esac
 	if [ -n "$_old" ] && [ -d "$_old" ] && ! dir_is_empty "$_old"; then
 		_need="$(du -sb "$_old" 2>/dev/null | awk '{print $1}')"
@@ -351,32 +347,29 @@ check_target() {
 	return "$_rc"
 }
 
+# Run docker compose for the Immich stack through the Compose plugin
+# helper (same --file/--env-file arguments as the Compose web UI).
 dc() {
-	(cd "$DIR" && docker compose "$@") 2>&1
+	if [ ! -x /usr/sbin/omv-compose-run ]; then
+		echo "ERROR: the openmediavault-compose plugin is not installed." >&2
+		return 1
+	fi
+	/usr/sbin/omv-compose-run "$STACK" "$@" 2>&1
 }
 
-# Stop the stack using the currently saved compose directory.
+# Stop the stack (best effort).
 stack_down() {
-	_compose="$(ref_path "$(conf_value composeDirRef)")"
-	if [ -n "$_compose" ] && [ -f "$_compose/docker-compose.yml" ]; then
-		(cd "$_compose" && docker compose down --remove-orphans) 2>&1 || true
-	else
-		echo "No rendered stack found - nothing to stop."
-	fi
+	dc down --remove-orphans
 }
 
 # Start the stack on the migrated (not yet saved) locations so the
-# result can be verified before saving. Uses the compose directory of a
-# recorded composeDirRef migration when present, and passes the recorded
-# upload/database locations as environment variables (which take
-# precedence over the .env file in docker compose).
+# result can be verified before saving. The recorded upload/database
+# locations are passed as environment variables, which take precedence
+# over the env file in docker compose.
 stack_temp_start() {
-	_dir="$(state_pending_to composeDirRef)"
-	if [ -z "$_dir" ]; then
-		_dir="$(ref_path "$(conf_value composeDirRef)")"
-	fi
-	if [ -z "$_dir" ] || [ ! -f "$_dir/docker-compose.yml" ]; then
-		echo "No rendered stack found - nothing was started."
+	_dir="$(stack_dir)"
+	if [ -z "$_dir" ] || [ ! -f "$_dir/$STACK.yml" ]; then
+		echo "No registered stack found - nothing was started."
 		return 0
 	fi
 	_env=""
@@ -392,26 +385,15 @@ stack_temp_start() {
 	echo ""
 	if [ -n "$_env" ]; then
 		# shellcheck disable=SC2086
-		(cd "$_dir" && env $_env docker compose up -d --remove-orphans) 2>&1
+		env $_env /usr/sbin/omv-compose-run "$STACK" up -d --remove-orphans 2>&1
 	else
-		(cd "$_dir" && docker compose up -d --remove-orphans) 2>&1
+		dc up -d --remove-orphans
 	fi
 	echo ""
 	echo "The stack now runs TEMPORARILY on the migrated directories so that you can"
 	echo "verify it in Immich. Nothing has been saved: if you do not save, the next"
 	echo "Apply restores the previously saved locations."
 }
-
-# Stack commands operate on the compose directory.
-case "$CMD" in
-	up|down|restart|upgrade|status|version|latest|logs|showcompose|path)
-		DIR="$(omv_get_sharedfolder_path "$ARG" 2>/dev/null || true)"
-		if [ -z "$DIR" ] && [ "$CMD" != "status" ] && [ "$CMD" != "path" ]; then
-			echo "ERROR: no shared folder selected for the stack files. Open Services -> Immich -> Settings, pick one and apply the changes." >&2
-			exit 1
-		fi
-		;;
-esac
 
 case "$CMD" in
 	up)
@@ -428,16 +410,13 @@ case "$CMD" in
 		dc up -d --remove-orphans
 	;;
 	status)
-		if [ -z "$DIR" ]; then
+		_dir="$(stack_dir)"
+		if [ -z "$_dir" ] || [ ! -f "$_dir/$STACK.yml" ]; then
 			echo "notinstalled"
 			exit 0
 		fi
-		if ! (cd "$DIR" && docker compose config --services >/dev/null 2>&1); then
-			echo "notinstalled"
-			exit 0
-		fi
-		total=$(cd "$DIR" && docker compose config --services 2>/dev/null | wc -l)
-		running=$(cd "$DIR" && docker compose ps --status running -q 2>/dev/null | wc -l)
+		total=$(dc config --services 2>/dev/null | wc -l)
+		running=$(dc ps --status running -q 2>/dev/null | wc -l)
 		if [ "$total" -eq 0 ] || [ "$running" -eq 0 ]; then
 			echo "stopped"
 		elif [ "$running" -lt "$total" ]; then
@@ -448,8 +427,9 @@ case "$CMD" in
 	;;
 	version)
 		PORT=2283
-		if [ -f "$DIR/.env" ]; then
-			env_port=$(sed -n 's/^IMMICH_PORT=//p' "$DIR/.env" | tail -n 1)
+		_envfile="$(stack_dir)/$STACK.env"
+		if [ -f "$_envfile" ]; then
+			env_port=$(sed -n 's/^IMMICH_PORT=//p' "$_envfile" | tail -n 1)
 			[ -n "$env_port" ] && PORT="$env_port"
 		fi
 		curl -fsS --max-time 3 "http://127.0.0.1:${PORT}/api/server/version" 2>/dev/null || true
@@ -465,10 +445,42 @@ case "$CMD" in
 		dc logs --tail 300
 	;;
 	showcompose)
-		cat "$DIR/docker-compose.yml" 2>/dev/null || true
+		cat "$(stack_dir)/$STACK.yml" 2>/dev/null || true
 	;;
 	path)
-		[ -n "$DIR" ] && echo "$DIR"
+		stack_dir
+	;;
+	unregister)
+		# Remove the Immich stack from the Compose plugin (used when the
+		# plugin is removed). The photos/database shared folders are not
+		# touched; only the containers and the generated stack files are
+		# removed by the Compose plugin.
+		if [ ! -x /usr/sbin/omv-rpc ]; then
+			echo "omv-rpc not available - skipping."
+			exit 0
+		fi
+		_uuid="$(omv-rpc -u admin Config get '{"id":"conf.service.compose.file"}' 2>/dev/null \
+			| python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    data = []
+if isinstance(data, dict):
+    data = data.get("data", []) or []
+for obj in data:
+    if isinstance(obj, dict) and obj.get("name") == "immich":
+        print(obj.get("uuid", ""))
+        break
+' 2>/dev/null)"
+		if [ -n "$_uuid" ]; then
+			echo "Removing the Immich stack from the Compose plugin ..."
+			omv-rpc -u admin Compose deleteFile "{\"uuid\":\"$_uuid\"}" >/dev/null 2>&1 \
+				&& echo "The stack was removed." \
+				|| echo "The stack could not be removed automatically - delete it on the Compose page."
+		else
+			echo "No Immich stack registered in the Compose plugin."
+		fi
 	;;
 	hasdata)
 		if [ -z "$ARG" ] || [ -z "$ARG2" ]; then
@@ -489,7 +501,7 @@ case "$CMD" in
 			fi
 			_found=1
 			_new="$(ref_path "$_newref")"
-			_old="$(ref_path "$(conf_value "$_p")")"
+			_old="$(ref_path "$(conf_value conf.service.immich "$_p")")"
 			if [ -z "$_new" ]; then
 				echo "--- $(prop_label "$_p") ---"
 				echo "FAIL  The selected shared folder cannot be resolved."
@@ -518,7 +530,7 @@ case "$CMD" in
 			[ -n "$_newref" ] || continue
 			_any=1
 			_new="$(ref_path "$_newref")"
-			_old="$(ref_path "$(conf_value "$_p")")"
+			_old="$(ref_path "$(conf_value conf.service.immich "$_p")")"
 			if [ -z "$_new" ]; then
 				echo "Cannot resolve the target shared folder of $(prop_label "$_p")." >&2
 				exit 1
@@ -550,7 +562,7 @@ case "$CMD" in
 			_newref="$(req_value "$_p")"
 			[ -n "$_newref" ] || continue
 			_new="$(ref_path "$_newref")"
-			_old="$(ref_path "$(conf_value "$_p")")"
+			_old="$(ref_path "$(conf_value conf.service.immich "$_p")")"
 			if [ -n "$_old" ] && [ "$_new" = "$_old" ]; then
 				continue
 			fi
@@ -561,7 +573,7 @@ case "$CMD" in
 			_newref="$(req_value "$_p")"
 			[ -n "$_newref" ] || continue
 			_new="$(ref_path "$_newref")"
-			_old="$(ref_path "$(conf_value "$_p")")"
+			_old="$(ref_path "$(conf_value conf.service.immich "$_p")")"
 			if [ -n "$_old" ] && [ "$_new" = "$_old" ]; then
 				continue
 			fi
@@ -592,7 +604,7 @@ case "$CMD" in
 			_bytes="$(du -sb "$_new" 2>/dev/null | awk '{print $1}')"
 			echo "Files: $_files   Size: $(human_size "${_bytes:-0}")"
 			cat > "$(state_file "$_p")" <<EOF
-{"fromRef":"$(conf_value "$_p")","from":"$_old","toRef":"$_newref","to":"$_new","completed":true,"at":"$(date -Iseconds)","pendingCleanup":""}
+{"fromRef":"$(conf_value conf.service.immich "$_p")","from":"$_old","toRef":"$_newref","to":"$_new","completed":true,"at":"$(date -Iseconds)","pendingCleanup":""}
 EOF
 		done
 
@@ -610,7 +622,7 @@ EOF
 				echo "ERROR: the shared folder to clean up ($(prop_label "$_p")) cannot be resolved." >&2
 				continue
 			fi
-			if [ "$_ref" = "$(conf_value "$_p")" ]; then
+			if [ "$_ref" = "$(conf_value conf.service.immich "$_p")" ]; then
 				echo "ERROR: refusing to remove the $(prop_label "$_p") folder that is currently in use." >&2
 				continue
 			fi

@@ -14,3 +14,4 @@ execute_before_dh_installdeb:
 	chmod 0755 debian/openmediavault-immich.postrm
 	chmod 0755 debian/openmediavault-immich/usr/sbin/omv-immich-ctl || true
 	chmod 0755 debian/openmediavault-immich/usr/share/openmediavault/confdb/create.d/*.sh
+	chmod 0755 debian/openmediavault-immich/usr/share/openmediavault/confdb/migrations.d/*.sh || true

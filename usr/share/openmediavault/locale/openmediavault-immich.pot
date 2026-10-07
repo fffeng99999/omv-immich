@@ -36,7 +36,7 @@ msgstr ""
 msgid "Not installed"
 msgstr ""
 
-msgid "Immich is a self-hosted photo and video backup solution. Save the settings, click Apply to render the Compose files, then use the buttons below to deploy and manage the stack. While the stack is running it starts automatically at boot."
+msgid "Immich is a self-hosted photo and video backup solution. The stack is created in the Compose plugin (Services -> Compose -> Files) where it can also be inspected or edited; configure the Compose plugin shared folder first. Save the settings, click Apply, then use the buttons below to deploy and manage the stack. While the stack is running it starts automatically at boot."
 msgstr ""
 
 msgid "Status"
@@ -54,7 +54,7 @@ msgstr ""
 msgid "Update available"
 msgstr ""
 
-msgid "Generated compose file"
+msgid "Stack file (Compose plugin)"
 msgstr ""
 
 msgid "Service"
@@ -63,7 +63,7 @@ msgstr ""
 msgid "Enabled"
 msgstr ""
 
-msgid "Automatically manage the stack from OMV. On Apply the Compose files are rendered and, when the settings changed, the stack is recreated. Disabling the service removes the containers on Apply (photos and database are kept)."
+msgid "Automatically manage the stack from OMV. On Apply the stack is (re)created; disabling the service removes the containers on Apply (photos and database are kept)."
 msgstr ""
 
 msgid "Version"
@@ -84,16 +84,10 @@ msgstr ""
 msgid "Storage"
 msgstr ""
 
-msgid "Stack files shared folder"
-msgstr ""
-
-msgid "Shared folder where .env and docker-compose.yml are rendered. Create one on the data array, e.g. 'immich-stack'."
-msgstr ""
-
 msgid "Photo library shared folder"
 msgstr ""
 
-msgid "Shared folder where photos and videos are stored (container path /data). The stack files and the database folder are handled the same way. Select the new folder in the form but do NOT save yet - click 'Test directories' to validate the changed folders and 'Migrate data' to copy them. Save only after the migration succeeded; the data in the old folders is removed when the settings are saved."
+msgid "Shared folder where photos and videos are stored (container path /data). To move the photo library or the database folder, select the new folder in the form but do NOT save yet - click 'Test directories' to validate the changed folders and 'Migrate data' to copy them. Save only after the migration succeeded; the data in the old folders is removed when the settings are saved."
 msgstr ""
 
 msgid "Test directories"

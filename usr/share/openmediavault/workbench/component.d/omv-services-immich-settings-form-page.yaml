@@ -14,7 +14,7 @@ data:
         method: set
     hints:
       - type: info
-        text: _("Immich is a self-hosted photo and video backup solution. Save the settings, click Apply to render the Compose files, then use the buttons below to deploy and manage the stack. While the stack is running it starts automatically at boot.")
+        text: _("Immich is a self-hosted photo and video backup solution. The stack is created in the Compose plugin (Services -> Compose -> Files) where it can also be inspected or edited; configure the Compose plugin shared folder first. Save the settings, click Apply, then use the buttons below to deploy and manage the stack. While the stack is running it starts automatically at boot.")
         dismissible: true
         stateId: 5b8e2c1a-9f3d-4c47-a2b6-0d84e13f7c55
     fields:
@@ -42,7 +42,7 @@ data:
         readonly: true
       - type: textInput
         name: composeFile
-        label: _("Generated compose file")
+        label: _("Stack file (Compose plugin)")
         submitValue: false
         readonly: true
 
@@ -51,7 +51,7 @@ data:
       - type: checkbox
         name: enable
         label: _("Enabled")
-        hint: _("Automatically manage the stack from OMV. On Apply the Compose files are rendered and, when the settings changed, the stack is recreated. Disabling the service removes the containers on Apply (photos and database are kept).")
+        hint: _("Automatically manage the stack from OMV. On Apply the stack is (re)created; disabling the service removes the containers on Apply (photos and database are kept).")
         value: false
 
       - type: divider
@@ -72,19 +72,9 @@ data:
       - type: divider
         title: _("Storage")
       - type: sharedFolderSelect
-        name: composeDirRef
-        label: _("Stack files shared folder")
-        hint: _("Shared folder where .env and docker-compose.yml are rendered. Create one on the data array, e.g. 'immich-stack'.")
-        hasEmptyOption: true
-        value: ""
-        validators:
-          requiredIf:
-            operator: truthy
-            arg0: enable
-      - type: sharedFolderSelect
         name: uploadRef
         label: _("Photo library shared folder")
-        hint: _("Shared folder where photos and videos are stored (container path /data). The stack files and the database folder are handled the same way. Select the new folder in the form but do NOT save yet - click 'Test directories' to validate the changed folders and 'Migrate data' to copy them. Save only after the migration succeeded; the data in the old folders is removed when the settings are saved.")
+        hint: _("Shared folder where photos and videos are stored (container path /data). To move the photo library or the database folder, select the new folder in the form but do NOT save yet - click 'Test directories' to validate the changed folders and 'Migrate data' to copy them. Save only after the migration succeeded; the data in the old folders is removed when the settings are saved.")
         hasEmptyOption: true
         value: ""
         validators:
@@ -148,7 +138,6 @@ data:
                 service: Immich
                 method: testDir
                 params:
-                  composeDirRef: "{{ composeDirRef }}"
                   uploadRef: "{{ uploadRef }}"
                   dbRef: "{{ dbRef }}"
       - text: _("Migrate data")
@@ -166,7 +155,6 @@ data:
                 service: Immich
                 method: migrate
                 params:
-                  composeDirRef: "{{ composeDirRef }}"
                   uploadRef: "{{ uploadRef }}"
                   dbRef: "{{ dbRef }}"
       - text: _("Start")

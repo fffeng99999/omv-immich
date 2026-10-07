@@ -25,17 +25,6 @@
 			"type": "string",
 			"default": "Etc/UTC"
 		},
-		"composeDirRef": {
-			"type": "string",
-			"oneOf": [{
-				"type": "string",
-				"format": "uuidv4"
-			}, {
-				"type": "string",
-				"maxLength": 0
-			}],
-			"default": ""
-		},
 		"uploadRef": {
 			"type": "string",
 			"oneOf": [{

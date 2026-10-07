@@ -3,7 +3,7 @@ Upstream-Name: openmediavault-immich
 Source: https://github.com/${GITHUB_USER}/omv-immich
 
 Files: *
-Copyright: 2026 ${GITHUB_USER}
+Copyright: 2026 ${GITHUB_USER} <${GITHUB_USER}@users.noreply.github.com>
 License: GPL-3+
 
 License: GPL-3+

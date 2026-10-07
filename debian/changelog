@@ -1,3 +1,35 @@
+openmediavault-immich (8.0.7) stable; urgency=medium
+
+  * The Immich Docker Compose stack now follows the conventions of the
+    openmediavault-compose plugin and is registered there, so it shows
+    up in the Compose web UI (Services -> Compose -> Files / Services)
+    and can be inspected, edited, started and stopped there as well.
+    - The stack lives in the Compose plugin shared folder as
+      <compose shared folder>/immich/immich.yml together with
+      immich.env (plus the compose.yml/.env symlinks) - exactly the
+      layout the Compose plugin uses for its own stacks.
+    - On save the plugin publishes the stack through the Compose RPC
+      (Compose.setFile); the Compose plugin renders the files, so this
+      plugin no longer writes them itself (no double rendering).
+    - The photo library and database shared folders are referenced
+      through the Compose placeholder '${{ sf:"<name>" }}', so the
+      Compose plugin resolves a changed shared folder path on deploy.
+    - Lifecycle commands run through the Compose plugin helper
+      omv-compose-run with the same --file/--env-file arguments as the
+      Compose web UI.
+    - The now unused 'composeDirRef' property (the stack files shared
+      folder) is removed; the migration stops the previously rendered
+      stack so its fixed container names are released. The photo
+      library and the database are not touched.
+    - The plugin now depends on openmediavault-compose; the Compose
+      plugin shared folder must be configured before the settings can
+      be saved.
+    - Removing the plugin unregisters the stack from the Compose
+      plugin (containers and generated stack files are removed, the
+      photos/database shared folders are kept).
+
+ -- fffeng99999 <fffeng99999@users.noreply.github.com>  Tue, 07 Oct 2026 18:00:00 +0800
+
 openmediavault-immich (8.0.6) stable; urgency=medium
 
   * Extend the directory migration from the photo library to all three
@@ -18,7 +50,7 @@ openmediavault-immich (8.0.6) stable; urgency=medium
       data directory (PG_VERSION marker) and for a matching PostgreSQL
       version.
 
- -- fffeng99999  Tue, 07 Oct 2026 12:00:00 +0800
+ -- fffeng99999 <fffeng99999@users.noreply.github.com>  Tue, 07 Oct 2026 12:00:00 +0800
 
 openmediavault-immich (8.0.5) stable; urgency=medium
 
@@ -41,7 +73,7 @@ openmediavault-immich (8.0.5) stable; urgency=medium
       that runs right after the settings have been saved.
     - rsync is added to the package dependencies.
 
- -- fffeng99999  Tue, 07 Oct 2026 10:00:00 +0800
+ -- fffeng99999 <fffeng99999@users.noreply.github.com>  Tue, 07 Oct 2026 10:00:00 +0800
 
 openmediavault-immich (8.0.4) stable; urgency=medium
 
@@ -52,7 +84,7 @@ openmediavault-immich (8.0.4) stable; urgency=medium
     now committed with mode 755. Do not upgrade existing 8.0.2
     installations with the 8.0.3 deb, use this version instead.
 
- -- fffeng99999  Mon, 06 Oct 2026 18:50:00 +0800
+ -- fffeng99999 <fffeng99999@users.noreply.github.com>  Mon, 06 Oct 2026 18:50:00 +0800
 
 openmediavault-immich (8.0.3) stable; urgency=medium
 
@@ -64,7 +96,7 @@ openmediavault-immich (8.0.3) stable; urgency=medium
     filter, the same pattern used by the frpc and clouddrive2
     plugins.
 
- -- fffeng99999  Mon, 06 Oct 2026 18:30:00 +0800
+ -- fffeng99999 <fffeng99999@users.noreply.github.com>  Mon, 06 Oct 2026 18:30:00 +0800
 
 openmediavault-immich (8.0.2) stable; urgency=medium
 
@@ -84,7 +116,7 @@ openmediavault-immich (8.0.2) stable; urgency=medium
     'release' tag) and report 'notinstalled' while the stack files are
     not rendered yet.
 
- -- fffeng99999  Sun, 04 Oct 2026 14:30:00 +0800
+ -- fffeng99999 <fffeng99999@users.noreply.github.com>  Sun, 04 Oct 2026 14:30:00 +0800
 
 openmediavault-immich (8.0.1) stable; urgency=medium
 
@@ -101,4 +133,4 @@ openmediavault-immich (8.0.1) stable; urgency=medium
       and generated compose file preview.
     - Simplified and Traditional Chinese translations included.
 
- -- ${GITHUB_USER}  Sat, 04 Oct 2026 12:00:00 +0800
+ -- ${GITHUB_USER} <${GITHUB_USER}@users.noreply.github.com>  Sat, 04 Oct 2026 12:00:00 +0800

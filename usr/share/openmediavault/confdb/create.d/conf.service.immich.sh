@@ -3,7 +3,7 @@
 # This file is part of OpenMediaVault.
 #
 # @license   https://www.gnu.org/licenses/gpl.html GPL Version 3
-# @author    ${GITHUB_USER}
+# @author    ${GITHUB_USER} <${GITHUB_USER}@users.noreply.github.com>
 #
 # OpenMediaVault is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@ set -e
 #       <version>v3.2.4</version>
 #       <port>2283</port>
 #       <timeZone>Etc/UTC</timeZone>
-#       <composeDirRef>uuid-or-empty</composeDirRef>
 #       <uploadRef>uuid-or-empty</uploadRef>
 #       <dbRef>uuid-or-empty</dbRef>
 #       <dbPassword>...</dbPassword>
@@ -40,7 +39,6 @@ if ! omv_config_exists "/config/services/immich"; then
 	omv_config_add_key "/config/services/immich" "version" "v3.2.4"
 	omv_config_add_key "/config/services/immich" "port" "2283"
 	omv_config_add_key "/config/services/immich" "timeZone" "Etc/UTC"
-	omv_config_add_key "/config/services/immich" "composeDirRef" ""
 	omv_config_add_key "/config/services/immich" "uploadRef" ""
 	omv_config_add_key "/config/services/immich" "dbRef" ""
 	# Generate a random Postgres password once (A-Za-z0-9 only, as

@@ -305,15 +305,34 @@ omv-compose 栈卸载：WebUI → 栈 → Down + 删除，再删共享文件夹�
 
 ### 插件工作原理
 
-- 配置存 `conf.service.immich`（版本标签/Web 端口/时区/ML 开关/数据库凭据 + **三个共享文件夹引用**）。
-  存储采用 OMV 官方 sharedfolder 引用模式：`composeDirRef`（栈文件）/ `uploadRef`（照片库）/ `dbRef`（PostgreSQL 数据）
-  三个下拉框（`sharedFolderSelect`）直接选择已建好的共享文件夹，**数据天然落在阵列上**；
-  配置里只存 UUID 引用，真实路径由 Salt（`omv_conf.get_sharedfolder_path`）与 ctl（`omv_get_sharedfolder_path`）在渲染/执行时解析，
-  共享文件夹变更会被引擎模块监听并自动置脏重渲染。
-- 「应用」时 Salt state（`srv/salt/omv/deploy/immich/`）把 `.env`（600）与 `docker-compose.yml`（644）渲染到所选共享文件夹；三个引用未配齐时不渲染（Apply 显示提示）。启用状态下文件有变化会自动重建栈，停用则移除容器（数据保留）。
-- 首次部署、显式升级、启停、日志走 RPC 后台任务（`omv-immich-ctl` 封装 `docker compose`），任务弹窗实时显示输出，不受 Web 请求超时影响。
-- 状态页显示：容器状态（运行/部分/停止/未渲染）、运行版本（Immich API）、最新上游版本（GitHub API）与更新提示。
+- 配置存 `conf.service.immich`（版本标签/Web 端口/时区/ML 开关/数据库凭据 + **两个共享文件夹引用**）。
+  存储采用 OMV 官方 sharedfolder 引用模式：`uploadRef`（照片库）/ `dbRef`（PostgreSQL 数据）
+  两个下拉框（`sharedFolderSelect`）直接选择已建好的共享文件夹，**数据天然落在阵列上**；
+  配置里只存 UUID 引用，真实路径由 ctl（`omv_get_sharedfolder_path`）在测试/迁移时解析。
+- **栈归 omv-compose 管**（8.0.7 起）：保存设置时插件调用 Compose RPC（`Compose.setFile`）把栈注册进
+  `conf.service.compose.file`，由 Compose 插件渲染 `<compose 共享文件夹>/immich/immich.yml` + `immich.env`
+  （含 `compose.yml`/`.env` 软链），因此打开 `Services → Compose → Files/Services` 就能看到、编辑、启停该栈。
+  插件**不自己写这些文件**（避免双写），照片库/数据库目录通过 Compose 的 `${{ sf:"<名称>" }}` 占位符引用，
+  共享文件夹路径变化由 Compose 在部署时解析。
+- 「应用」时 Salt state（`srv/salt/omv/deploy/immich/`）只做生命周期：`enable` 分支 `omv-compose-run immich up -d`、
+  关闭分支 `down`（**绝不带 -v、绝不删数据**）；Compose 插件未配置共享文件夹时整段跳过，绝不导致 Apply 失败。
+- 首次部署、显式升级、启停、日志走 RPC 后台任务（`omv-immich-ctl` 经 `omv-compose-run` 执行 `docker compose`），
+  任务弹窗实时显示输出，不受 Web 请求超时影响。
+- 状态页显示：容器状态（运行/部分/停止/未注册）、运行版本（Immich API）、最新上游版本（GitHub API）与更新提示。
 - 已知限制：测试环境网络下 `api.github.com` 可能被限流（HTTP 403），此时「最新版本」显示为空、更新检测降级停用；`docker pull` 升级不受影响。
+
+### 升级到 8.0.7（栈改由 omv-compose 托管）
+
+8.0.6 及以前，插件把 `.env` + `docker-compose.yml` 自己渲染到一个「栈文件」共享文件夹；8.0.7 起取消该字段，
+栈按 omv-compose 规范注册进 Compose 插件（见上节）。**升级注意**：
+
+1. 必须先装好 `openmediavault-compose`，并在 `Services → Compose → Settings` 选好 compose 共享文件夹——
+   否则保存 Immich 设置会报错提示先去配 Compose。
+2. 升级 deb 时 migration 会自动：停掉旧的自渲染栈（释放固定容器名 `immich_server` 等）→ 删除 `composeDirRef` 字段。
+   照片库与数据库**不动**。
+3. 升级后到 `Services → Immich → Settings` 保存一次：插件会把栈注册进 Compose 并（`enable` 时）拉起容器；
+   旧「栈文件」共享文件夹里的 `.env`/`docker-compose.yml` 已无用，可自行删除。
+
 
 ### 升级到 8.0.2（存储字段改为共享文件夹引用）
 
