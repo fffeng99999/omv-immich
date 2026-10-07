@@ -321,6 +321,12 @@ omv-compose 栈卸载：WebUI → 栈 → Down + 删除，再删共享文件夹�
 - 状态页显示：容器状态（运行/部分/停止/未注册）、运行版本（Immich API）、最新上游版本（GitHub API）与更新提示。
 - 已知限制：测试环境网络下 `api.github.com` 可能被限流（HTTP 403），此时「最新版本」显示为空、更新检测降级停用；`docker pull` 升级不受影响。
 
+### 8.0.8 说明（依赖 Compose ≥ 8.2.0 / 更新检测 / 栈文件只读展示）
+
+- **依赖**：`Depends: openmediavault-compose (>= 8.2.0)`——生命周期走 Compose 插件 helper `omv-compose-run`，该脚本 **8.2.0 才加入**；旧版（如 8.1.28）上应用会报 `omv-compose-run: not found`，WebUI 显示 500。
+- **更新检测**：改用 GitHub releases 页重定向（`github.com/…/releases/latest` → `…/releases/tag/<tag>`）取最新**正式**版，替代被按 IP 限流的 `api.github.com`（限流时"最新版本"会显示为空）。页重定向自动跳过 draft/prerelease（RC）。
+- **栈文件位置**：设置页「存储器」区新增**只读**的 "Stack file (Compose plugin)"，展示 Compose 插件解析出的实际栈文件路径（= `<Compose 共享文件夹>/immich/immich.yml`）；该路径由 Compose 插件决定，不能在插件页更改。
+
 ### 升级到 8.0.7（栈改由 omv-compose 托管）
 
 8.0.6 及以前，插件把 `.env` + `docker-compose.yml` 自己渲染到一个「栈文件」共享文件夹；8.0.7 起取消该字段，

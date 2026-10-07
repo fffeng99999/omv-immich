@@ -40,12 +40,6 @@ data:
         label: _("Update available")
         submitValue: false
         readonly: true
-      - type: textInput
-        name: composeFile
-        label: _("Stack file (Compose plugin)")
-        submitValue: false
-        readonly: true
-
       - type: divider
         title: _("Service")
       - type: checkbox
@@ -71,6 +65,12 @@ data:
 
       - type: divider
         title: _("Storage")
+      - type: textInput
+        name: composeFile
+        label: _("Stack file (Compose plugin)")
+        hint: _("Stack file location. The stack files are rendered by the Compose plugin into its shared folder and are managed there, so this path cannot be changed here. Set the folder in Services -> Compose -> Settings.")
+        submitValue: false
+        readonly: true
       - type: sharedFolderSelect
         name: uploadRef
         label: _("Photo library shared folder")

@@ -56,6 +56,9 @@ msgstr "有可用更新"
 msgid "Stack file (Compose plugin)"
 msgstr "堆疊檔案（Compose 外掛）"
 
+msgid "Stack file location. The stack files are rendered by the Compose plugin into its shared folder and are managed there, so this path cannot be changed here. Set the folder in Services -> Compose -> Settings."
+msgstr "堆疊檔案位置。堆疊檔案由 Compose 外掛渲染至其共享資料夾下並於該處管理，因此此路徑無法在此變更。請在 服務 -> Compose -> 設定 中設定該資料夾。"
+
 msgid "Service"
 msgstr "服務"
 

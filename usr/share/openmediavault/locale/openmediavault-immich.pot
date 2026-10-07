@@ -57,6 +57,9 @@ msgstr ""
 msgid "Stack file (Compose plugin)"
 msgstr ""
 
+msgid "Stack file location. The stack files are rendered by the Compose plugin into its shared folder and are managed there, so this path cannot be changed here. Set the folder in Services -> Compose -> Settings."
+msgstr ""
+
 msgid "Service"
 msgstr ""
 

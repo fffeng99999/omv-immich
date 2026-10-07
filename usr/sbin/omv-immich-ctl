@@ -435,12 +435,19 @@ case "$CMD" in
 		curl -fsS --max-time 3 "http://127.0.0.1:${PORT}/api/server/version" 2>/dev/null || true
 	;;
 	latest)
-		curl -fsSL --max-time 5 \
-			-H "Accept: application/vnd.github+json" \
-			https://api.github.com/repos/immich-app/immich/releases/latest 2>/dev/null \
-			| sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
-			| head -n 1 || true
-	;;
+		# Latest upstream release tag. Read the GitHub releases page
+		# redirect (github.com) instead of api.github.com: the anonymous
+		# REST API is rate limited per IP and then fails, whereas the web
+		# redirect is not. The redirect target .../releases/tag/<tag>
+		# points at the newest release that is neither a draft nor a
+		# prerelease, so release candidates are skipped automatically.
+		_url="$(curl -sS -o /dev/null -w '%{redirect_url}' --max-time 6 \
+			https://github.com/immich-app/immich/releases/latest 2>/dev/null || true)"
+		case "${_url}" in
+			*/tag/v*) echo "${_url##*/tag/}" ;;
+			*) : ;;
+		esac
+		;;
 	logs)
 		dc logs --tail 300
 	;;

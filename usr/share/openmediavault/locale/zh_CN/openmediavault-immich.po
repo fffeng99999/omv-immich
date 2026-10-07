@@ -56,6 +56,9 @@ msgstr "有可用更新"
 msgid "Stack file (Compose plugin)"
 msgstr "栈文件（Compose 插件）"
 
+msgid "Stack file location. The stack files are rendered by the Compose plugin into its shared folder and are managed there, so this path cannot be changed here. Set the folder in Services -> Compose -> Settings."
+msgstr "栈文件位置。栈文件由 Compose 插件渲染到其共享文件夹下并在那里管理，因此此路径不能在此更改。请在 服务 -> Compose -> 设置 中配置该文件夹。"
+
 msgid "Service"
 msgstr "服务"
 

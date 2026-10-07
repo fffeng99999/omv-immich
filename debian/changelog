@@ -1,3 +1,24 @@
+openmediavault-immich (8.0.8) stable; urgency=medium
+
+  * Require openmediavault-compose (>= 8.2.0): the stack lifecycle runs
+    through the Compose plugin helper 'omv-compose-run', which was only
+    added in Compose 8.2.0. On an older Compose plugin, applying the
+    configuration failed with "omv-compose-run: not found" and the web
+    UI showed a 500 error.
+  * Fix the update detection: the latest upstream release is now read
+    from the GitHub releases page redirect (github.com), not from the
+    rate limited api.github.com endpoint, which failed once the
+    anonymous API quota of the server IP was exhausted and left the
+    "Latest version" field empty. The releases page redirect points at
+    the newest release that is neither a draft nor a prerelease, so
+    release candidates are skipped.
+  * Show the stack file location in the Storage section (read only).
+    The stack files are rendered by the Compose plugin into its shared
+    folder and cannot be relocated here; the field documents the actual
+    path again, next to the photo library and database folders.
+
+ -- fffeng99999 <fffeng99999@users.noreply.github.com>  Tue, 07 Oct 2026 21:00:00 +0800
+
 openmediavault-immich (8.0.7) stable; urgency=medium
 
   * The Immich Docker Compose stack now follows the conventions of the
