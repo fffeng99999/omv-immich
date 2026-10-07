@@ -1,3 +1,15 @@
+openmediavault-immich (8.0.11) stable; urgency=medium
+
+  * External libraries: also mark the service dirty when a library entry
+    is created or deleted. Only OMV_NOTIFY_MODIFY was registered, so
+    deleting an entry removed the mount from the configuration and from
+    the rendered stack but left the running container untouched (the
+    Salt state was not re-run on Apply). Register OMV_NOTIFY_CREATE,
+    OMV_NOTIFY_MODIFY and OMV_NOTIFY_DELETE - the same set the frpc
+    plugin uses for its proxies. Found on the test environment.
+
+ -- fffeng99999 <fffeng99999@users.noreply.github.com>  Tue, 07 Oct 2026 23:00:00 +0800
+
 openmediavault-immich (8.0.10) stable; urgency=medium
 
   * Fix the external library support added in 8.0.9: the parent data

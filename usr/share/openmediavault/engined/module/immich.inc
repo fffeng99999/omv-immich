@@ -63,10 +63,22 @@ class Immich extends \OMV\Engine\Module\ServiceAbstract
 			"org.openmediavault.conf.service.immich",
 			[$this, "setDirty"]
 		);
-		// Editing the external library mounts must re-run the Salt
-		// state as well: the stack is re-rendered with the new mounts.
+		// Creating, editing or deleting an external library mount must
+		// re-run the Salt state as well: the stack is re-rendered with
+		// the new mounts. All three events are required - a delete would
+		// otherwise leave the running container untouched.
+		$dispatcher->addListener(
+			OMV_NOTIFY_CREATE,
+			"org.openmediavault.conf.service.immich.library",
+			[$this, "setDirty"]
+		);
 		$dispatcher->addListener(
 			OMV_NOTIFY_MODIFY,
+			"org.openmediavault.conf.service.immich.library",
+			[$this, "setDirty"]
+		);
+		$dispatcher->addListener(
+			OMV_NOTIFY_DELETE,
 			"org.openmediavault.conf.service.immich.library",
 			[$this, "setDirty"]
 		);
