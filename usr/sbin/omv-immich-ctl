@@ -44,12 +44,12 @@
 #   up          start the stack (docker compose up -d)
 #   down        stop and remove the containers (data is kept)
 #   restart     restart the stack
-#   upgrade [tag]
+#   upgrade [tag] [previous-tag]
 #               pull the newest release and recreate the stack. A pinned
 #               Immich version tag is moved forward by the RPC before
 #               this command runs (the tag is rendered by the Compose
-#               plugin); the optional argument is only used for the
-#               report. The running version is printed at the end.
+#               plugin); the arguments are only used for the report. The
+#               running version is printed at the end.
 #   status      print "running" | "partial" | "stopped" | "notinstalled"
 #   version     print the Immich server version JSON from the local API
 #   latest      print the latest upstream release tag from GitHub
@@ -481,17 +481,32 @@ case "$CMD" in
 			echo "The API did not answer yet - the container is still starting"
 			echo "or the new release failed to boot. Check 'View logs'."
 		fi
-		if [ -n "$_before" ] && [ -n "$_after" ] \
-			&& [ "$_before" = "$_after" ] && [ -n "$ARG" ]; then
-			echo ""
-			echo "WARNING: the server still reports the previous version."
-			echo "         Check the pull output above and the container log."
+		# The RPC passes the previously configured tag as the second
+		# argument when it really moved the pin; both arguments are
+		# equal otherwise (already on the newest release, floating tag).
+		_moved=0
+		if [ -n "$ARG2" ] && [ "$ARG2" != "$ARG" ]; then
+			_moved=1
+			echo "Version tag moved  : $ARG2 -> $ARG"
 		fi
-		echo ""
-		echo "Note: a changed version tag is already stored in the OMV"
-		echo "configuration database. Click Apply on the Immich settings page"
-		echo "to commit the pending configuration change (optional - the stack"
-		echo "has already been upgraded here)."
+		if [ -n "$_before" ] && [ -n "$_after" ] && [ "$_before" = "$_after" ]; then
+			echo ""
+			if [ "$_moved" -eq 1 ]; then
+				echo "WARNING: the version tag was moved to $ARG but the server still"
+				echo "         reports the previous version - the pull may have failed"
+				echo "         or the new release cannot boot. Check 'View logs'."
+			else
+				echo "The stack already runs the newest release tag - the images and"
+				echo "the containers were refreshed without a version change."
+			fi
+		fi
+		if [ "$_moved" -eq 1 ]; then
+			echo ""
+			echo "Note: the new version tag is already stored in the OMV"
+			echo "configuration database. Click Apply on the Immich settings page"
+			echo "to commit the pending configuration change (the stack itself is"
+			echo "already upgraded)."
+		fi
 	;;
 	status)
 		_dir="$(stack_dir)"

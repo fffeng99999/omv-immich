@@ -745,7 +745,12 @@ YAML;
                 $this->getSettingsObject($context));
         }
 
-        return $this->execBgCtl(["upgrade", $target]);
+        // The previously configured tag is only reported when the pin
+        // really moved; it equals the target tag otherwise (already on
+        // the newest release, or a floating tag that is left as is).
+        return $this->execBgCtl([
+            "upgrade", $target, ($writeVersion ? $current : $target)
+        ]);
     }
 
     public function getLog($params, $context)

@@ -1,3 +1,16 @@
+openmediavault-immich (8.0.13) stable; urgency=medium
+
+  * Refine the upgrade report added in 8.0.12: the "the server still
+    reports the previous version" warning was also printed when the stack
+    already ran the newest release tag (repeated clicks on the button), so
+    a successful no-op looked like a failure. The task now receives the
+    previously configured tag and only warns when the pin really moved but
+    the server still reports the old version; otherwise it reports that the
+    stack already runs the newest release. The "click Apply" hint is only
+    shown when a tag was actually written.
+
+ -- fffeng99999 <fffeng99999@users.noreply.github.com>  Sun, 01 Nov 2026 17:15:00 +0800
+
 openmediavault-immich (8.0.12) stable; urgency=medium
 
   * Fix the Upgrade button never upgrading the stack. The action only ran
