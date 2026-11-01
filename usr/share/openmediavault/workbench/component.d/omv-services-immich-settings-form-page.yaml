@@ -57,7 +57,7 @@ data:
       - type: textInput
         name: version
         label: _("Immich version tag")
-        hint: _("Docker image tag for immich-server and the machine-learning service (e.g. release or v3.2.4). 'release' follows the latest stable release. Prefer pinning a specific version; upgrade with the Upgrade button or change the tag here and Apply.")
+        hint: _("Docker image tag for immich-server and the machine-learning service (e.g. release or v3.3.5). 'release' follows the latest stable release; a pinned tag stays on its release until it is upgraded. 'Upgrade to latest release' moves a pinned tag to the newest release, pulls the images and recreates the stack - alternatively change the tag here and click Apply.")
         value: "v3.2.4"
         validators:
           required: true
@@ -200,10 +200,10 @@ data:
               request:
                 service: Immich
                 method: restart
-      - text: _("Upgrade")
+      - text: _("Upgrade to latest release")
         confirmationDialogConfig:
           template: confirmation
-          message: _("Do you really want to upgrade the Immich stack? Newer images are pulled and the stack is recreated. Read the upstream release notes before major upgrades.")
+          message: _("Do you really want to upgrade the Immich stack to the newest upstream release? A pinned version tag is moved forward, the newer images are pulled and the containers are recreated. Immich runs its database migrations on the first start and they cannot be undone - read the upstream release notes before you continue.")
         execute:
           type: taskDialog
           taskDialog:

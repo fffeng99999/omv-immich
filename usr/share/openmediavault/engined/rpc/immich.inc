@@ -644,10 +644,108 @@ YAML;
         return $this->execCtlTask($context, "restart");
     }
 
+    /**
+     * True when the tag follows a floating reference (e.g. 'release' or
+     * 'v3') instead of pinning one exact release. A floating tag is
+     * resolved again on every 'docker compose pull', a pinned tag is
+     * not - it always resolves to the same, already present image.
+     */
+    private function isFloatingVersionTag(string $tag): bool
+    {
+        return (1 !== preg_match('/^v?[0-9]+\.[0-9]+\.[0-9]+/', $tag));
+    }
+
+    /**
+     * An image tag is rendered into the stack environment file, so it
+     * must not contain whitespace or characters with a meaning in the
+     * shell or in YAML.
+     */
+    private function isValidVersionTag(string $tag): bool
+    {
+        return (1 === preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/', $tag));
+    }
+
+    /**
+     * Upgrade the stack to the newest upstream release (or to the tag
+     * given in $params['version']).
+     *
+     * 'docker compose pull' followed by 'up -d' alone never upgrades a
+     * stack whose Immich version tag is pinned, because the pinned tag
+     * resolves to the same image that is already installed - the
+     * upgrade button therefore did nothing at all. The pinned tag is
+     * moved to the target release and the stack is republished first
+     * (the Compose plugin re-renders immich.yml/immich.env immediately),
+     * so the rendered IMMICH_VERSION and the pulled image match.
+     * A floating tag is left untouched, it already follows the newest
+     * release.
+     *
+     * The new tag is stored in the configuration database, so the
+     * pending configuration change still has to be applied on the
+     * settings page - the upgrade itself is done by the background
+     * task, which shows the live output of 'docker compose'.
+     */
     public function upgrade($params, $context)
     {
         $this->validateMethodContext($context, ["role" => OMV_ROLE_ADMINISTRATOR]);
-        return $this->execCtlTask($context, "upgrade");
+
+        $config = $this->getSettingsObject($context);
+        if (empty($config["enable"])) {
+            throw new \OMV\Exception(
+                "The Immich service is disabled. Enable it, click Apply and ".
+                "start the stack before you upgrade it."
+            );
+        }
+
+        $target = trim((string)($params["version"] ?? ""));
+        $explicit = ("" !== $target);
+        if ("" === $target) {
+            list(, $output) = $this->runCtl(["latest"], false);
+            $target = trim(implode("\n", $output));
+        }
+        if ("" === $target) {
+            throw new \OMV\Exception(
+                "The newest Immich release could not be determined. Check ".
+                "that the server can reach github.com, or enter the version ".
+                "tag manually and click Apply."
+            );
+        }
+        if (!$this->isValidVersionTag($target)) {
+            throw new \OMV\Exception(
+                "The version tag '%s' is not a valid Docker image tag.",
+                $target
+            );
+        }
+
+        $current = trim((string)($config["version"] ?? ""));
+        $writeVersion = false;
+        if ($target !== $current) {
+            if ($explicit) {
+                // A tag that was requested explicitly is always written,
+                // it may also be a downgrade.
+                $writeVersion = true;
+            } elseif (("" !== $current) && !$this->isFloatingVersionTag($current)
+                && version_compare(ltrim($target, "v"), ltrim($current, "v"), ">")) {
+                // Move the pinned tag forward. A floating tag already
+                // follows the newest release and is left untouched.
+                $writeVersion = true;
+            }
+        }
+        if ($writeVersion) {
+            $data = array_intersect_key(
+                $config, array_flip($this->settingsFields)
+            );
+            $data["version"] = $target;
+            \OMV\Rpc\Rpc::call("Config", "set", [
+                "id" => "conf.service.immich",
+                "data" => $data
+            ], $context);
+            // Republish the stack so that immich.yml/immich.env carry
+            // the new IMMICH_VERSION before the images are pulled.
+            $this->syncComposeStack($context,
+                $this->getSettingsObject($context));
+        }
+
+        return $this->execBgCtl(["upgrade", $target]);
     }
 
     public function getLog($params, $context)

@@ -44,7 +44,12 @@
 #   up          start the stack (docker compose up -d)
 #   down        stop and remove the containers (data is kept)
 #   restart     restart the stack
-#   upgrade     pull newer images and recreate the stack
+#   upgrade [tag]
+#               pull the newest release and recreate the stack. A pinned
+#               Immich version tag is moved forward by the RPC before
+#               this command runs (the tag is rendered by the Compose
+#               plugin); the optional argument is only used for the
+#               report. The running version is printed at the end.
 #   status      print "running" | "partial" | "stopped" | "notinstalled"
 #   version     print the Immich server version JSON from the local API
 #   latest      print the latest upstream release tag from GitHub
@@ -357,6 +362,32 @@ dc() {
 	/usr/sbin/omv-compose-run "$STACK" "$@" 2>&1
 }
 
+# Web port of the stack (from the rendered environment file, default
+# 2283).
+stack_port() {
+	_port=2283
+	_envfile="$(stack_dir)/$STACK.env"
+	if [ -f "$_envfile" ]; then
+		_env_port="$(sed -n 's/^IMMICH_PORT=//p' "$_envfile" | tail -n 1)"
+		[ -n "$_env_port" ] && _port="$_env_port"
+	fi
+	echo "$_port"
+}
+
+# Version JSON the running Immich server reports (empty while the API
+# does not answer, e.g. right after the container was recreated).
+api_version() {
+	curl -fsS --max-time 3 \
+		"http://127.0.0.1:$(stack_port)/api/server/version" 2>/dev/null || true
+}
+
+# Immich version tag of the rendered stack (empty when unknown).
+stack_version_tag() {
+	_envfile="$(stack_dir)/$STACK.env"
+	[ -f "$_envfile" ] || return 0
+	sed -n 's/^IMMICH_VERSION=//p' "$_envfile" | tail -n 1
+}
+
 # Stop the stack (best effort).
 stack_down() {
 	dc down --remove-orphans
@@ -406,8 +437,61 @@ case "$CMD" in
 		dc restart
 	;;
 	upgrade)
+		# ARG is the release the upgrade targets. The RPC sets it after
+		# moving a pinned version tag forward; it is used for the report
+		# only - the tag itself lives in the stack environment file,
+		# which the Compose plugin renders from the settings.
+		_tag="$(stack_version_tag)"
+		if [ -n "$_tag" ]; then
+			echo "Immich version tag : $_tag"
+		fi
+		if [ -n "$ARG" ]; then
+			echo "Target release     : $ARG"
+		fi
+		_before="$(api_version)"
+		echo ""
+		echo "=== pull the images ==="
+		# A failing optional image (e.g. a machine-learning variant with
+		# a special tag) must not abort the upgrade of the main service.
 		dc pull --ignore-pull-failures || true
-		dc up -d --remove-orphans
+		echo ""
+		echo "=== recreate the stack ==="
+		if ! dc up -d --remove-orphans; then
+			echo "" >&2
+			echo "ERROR: the stack could not be recreated, see the output above." >&2
+			echo "       The stack may be partially updated - check 'View logs'." >&2
+			exit 1
+		fi
+		echo ""
+		echo "=== wait for the Immich API ==="
+		_after=""
+		_i=0
+		while [ "$_i" -lt 30 ]; do
+			_after="$(api_version)"
+			[ -n "$_after" ] && break
+			_i=$((_i + 1))
+			sleep 2
+		done
+		if [ -n "$_before" ]; then
+			echo "Version before : $_before"
+		fi
+		if [ -n "$_after" ]; then
+			echo "Version now    : $_after"
+		else
+			echo "The API did not answer yet - the container is still starting"
+			echo "or the new release failed to boot. Check 'View logs'."
+		fi
+		if [ -n "$_before" ] && [ -n "$_after" ] \
+			&& [ "$_before" = "$_after" ] && [ -n "$ARG" ]; then
+			echo ""
+			echo "WARNING: the server still reports the previous version."
+			echo "         Check the pull output above and the container log."
+		fi
+		echo ""
+		echo "Note: a changed version tag is already stored in the OMV"
+		echo "configuration database. Click Apply on the Immich settings page"
+		echo "to commit the pending configuration change (optional - the stack"
+		echo "has already been upgraded here)."
 	;;
 	status)
 		_dir="$(stack_dir)"
@@ -426,13 +510,7 @@ case "$CMD" in
 		fi
 	;;
 	version)
-		PORT=2283
-		_envfile="$(stack_dir)/$STACK.env"
-		if [ -f "$_envfile" ]; then
-			env_port=$(sed -n 's/^IMMICH_PORT=//p' "$_envfile" | tail -n 1)
-			[ -n "$env_port" ] && PORT="$env_port"
-		fi
-		curl -fsS --max-time 3 "http://127.0.0.1:${PORT}/api/server/version" 2>/dev/null || true
+		api_version
 	;;
 	latest)
 		# Latest upstream release tag. Read the GitHub releases page

@@ -75,7 +75,7 @@ msgstr ""
 msgid "Immich version tag"
 msgstr ""
 
-msgid "Docker image tag for immich-server and the machine-learning service (e.g. release or v3.2.4). 'release' follows the latest stable release. Prefer pinning a specific version; upgrade with the Upgrade button or change the tag here and Apply."
+msgid "Docker image tag for immich-server and the machine-learning service (e.g. release or v3.3.5). 'release' follows the latest stable release; a pinned tag stays on its release until it is upgraded. 'Upgrade to latest release' moves a pinned tag to the newest release, pulls the images and recreates the stack - alternatively change the tag here and click Apply."
 msgstr ""
 
 msgid "Enable machine learning"
@@ -156,7 +156,7 @@ msgstr ""
 msgid "Restart"
 msgstr ""
 
-msgid "Upgrade"
+msgid "Upgrade to latest release"
 msgstr ""
 
 msgid "View logs"
@@ -174,7 +174,7 @@ msgstr ""
 msgid "Do you really want to restart the Immich stack?"
 msgstr ""
 
-msgid "Do you really want to upgrade the Immich stack? Newer images are pulled and the stack is recreated. Read the upstream release notes before major upgrades."
+msgid "Do you really want to upgrade the Immich stack to the newest upstream release? A pinned version tag is moved forward, the newer images are pulled and the containers are recreated. Immich runs its database migrations on the first start and they cannot be undone - read the upstream release notes before you continue."
 msgstr ""
 
 msgid "Immich deploy/start output"

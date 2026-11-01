@@ -74,8 +74,8 @@ msgstr "版本"
 msgid "Immich version tag"
 msgstr "Immich 版本标签"
 
-msgid "Docker image tag for immich-server and the machine-learning service (e.g. release or v3.2.4). 'release' follows the latest stable release. Prefer pinning a specific version; upgrade with the Upgrade button or change the tag here and Apply."
-msgstr "immich-server 与机器学习服务的 Docker 镜像标签（如 release 或 v3.2.4）。'release' 跟随最新稳定版。建议固定具体版本；升级请用「升级」按钮，或改标签后点「应用」。"
+msgid "Docker image tag for immich-server and the machine-learning service (e.g. release or v3.3.5). 'release' follows the latest stable release; a pinned tag stays on its release until it is upgraded. 'Upgrade to latest release' moves a pinned tag to the newest release, pulls the images and recreates the stack - alternatively change the tag here and click Apply."
+msgstr "immich-server 与机器学习服务的 Docker 镜像标签（如 release 或 v3.3.5）。'release' 跟随最新稳定版；固定标签会停留在该版本，直到执行升级。「升级到最新版本」会把固定标签推进到最新版本、拉取镜像并重建栈——也可以在左侧改标签后点「应用」。"
 
 msgid "Enable machine learning"
 msgstr "启用机器学习"
@@ -155,8 +155,8 @@ msgstr "停止"
 msgid "Restart"
 msgstr "重启"
 
-msgid "Upgrade"
-msgstr "升级"
+msgid "Upgrade to latest release"
+msgstr "升级到最新版本"
 
 msgid "View logs"
 msgstr "查看日志"
@@ -173,8 +173,8 @@ msgstr "确实要停止 Immich 栈吗？容器将被移除；照片、数据库�
 msgid "Do you really want to restart the Immich stack?"
 msgstr "确实要重启 Immich 栈吗？"
 
-msgid "Do you really want to upgrade the Immich stack? Newer images are pulled and the stack is recreated. Read the upstream release notes before major upgrades."
-msgstr "确实要升级 Immich 栈吗？将拉取新镜像并重建栈。大版本升级前请先阅读上游发布说明。"
+msgid "Do you really want to upgrade the Immich stack to the newest upstream release? A pinned version tag is moved forward, the newer images are pulled and the containers are recreated. Immich runs its database migrations on the first start and they cannot be undone - read the upstream release notes before you continue."
+msgstr "确实要把 Immich 栈升级到最新上游版本吗？固定的版本标签会被向前推进，随后拉取新镜像并重建容器。Immich 首次启动时会执行数据库迁移且无法回退——继续之前请先阅读上游发布说明。"
 
 msgid "Immich deploy/start output"
 msgstr "Immich 部署/启动输出"

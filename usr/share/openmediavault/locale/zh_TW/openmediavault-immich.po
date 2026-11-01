@@ -74,8 +74,8 @@ msgstr "版本"
 msgid "Immich version tag"
 msgstr "Immich 版本標籤"
 
-msgid "Docker image tag for immich-server and the machine-learning service (e.g. release or v3.2.4). 'release' follows the latest stable release. Prefer pinning a specific version; upgrade with the Upgrade button or change the tag here and Apply."
-msgstr "immich-server 與機器學習服務的 Docker 映像標籤（如 release 或 v3.2.4）。'release' 跟隨最新穩定版。建議固定具體版本；升級請用「升級」按鈕，或改標籤後點「套用」。"
+msgid "Docker image tag for immich-server and the machine-learning service (e.g. release or v3.3.5). 'release' follows the latest stable release; a pinned tag stays on its release until it is upgraded. 'Upgrade to latest release' moves a pinned tag to the newest release, pulls the images and recreates the stack - alternatively change the tag here and click Apply."
+msgstr "immich-server 與機器學習服務的 Docker 映像標籤（如 release 或 v3.3.5）。'release' 跟隨最新穩定版；固定標籤會停留在該版本，直到執行升級。「升級至最新版本」會把固定標籤推進到最新版本、拉取映像並重建堆疊——也可以直接改這裡的標籤後點「套用」。"
 
 msgid "Enable machine learning"
 msgstr "啟用機器學習"
@@ -155,8 +155,8 @@ msgstr "停止"
 msgid "Restart"
 msgstr "重新啟動"
 
-msgid "Upgrade"
-msgstr "升級"
+msgid "Upgrade to latest release"
+msgstr "升級至最新版本"
 
 msgid "View logs"
 msgstr "檢視日誌"
@@ -173,8 +173,8 @@ msgstr "確定要停止 Immich 堆疊嗎？容器將被移除；照片、資料�
 msgid "Do you really want to restart the Immich stack?"
 msgstr "確定要重新啟動 Immich 堆疊嗎？"
 
-msgid "Do you really want to upgrade the Immich stack? Newer images are pulled and the stack is recreated. Read the upstream release notes before major upgrades."
-msgstr "確定要升級 Immich 堆疊嗎？將拉取新映像並重建堆疊。大版本升級前請先閱讀上游發布說明。"
+msgid "Do you really want to upgrade the Immich stack to the newest upstream release? A pinned version tag is moved forward, the newer images are pulled and the containers are recreated. Immich runs its database migrations on the first start and they cannot be undone - read the upstream release notes before you continue."
+msgstr "確定要將 Immich 堆疊升級至最新上游版本嗎？固定的版本標籤會被向前推進，接著拉取新映像並重建容器。Immich 首次啟動時會執行資料庫遷移且無法回復——繼續之前請先閱讀上游發布說明。"
 
 msgid "Immich deploy/start output"
 msgstr "Immich 部署/啟動輸出"

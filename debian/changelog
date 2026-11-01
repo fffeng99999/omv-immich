@@ -1,3 +1,34 @@
+openmediavault-immich (8.0.12) stable; urgency=medium
+
+  * Fix the Upgrade button never upgrading the stack. The action only ran
+    "docker compose pull" followed by "up -d" while the Immich version tag
+    is pinned in conf.service.immich.version: a pinned tag always resolves
+    to the image that is already installed, so the pull fetched nothing,
+    no container was recreated and the status page kept reporting "Update
+    available" no matter how often the button was clicked.
+    The RPC now resolves the newest upstream release (github.com releases
+    redirect), moves a pinned tag forward, stores the new tag in the
+    configuration database and republishes the Compose stack - the Compose
+    plugin re-renders immich.yml/immich.env immediately - before the images
+    are pulled, so the rendered IMMICH_VERSION and the recreated containers
+    match the release. A floating tag (e.g. "release") is left untouched
+    because it already follows the newest release. An unreachable
+    github.com, an empty and an invalid tag are rejected with a message
+    instead of silently doing nothing.
+  * The background task now reports the configured tag, the target release
+    and the Immich version before and after the upgrade, and warns when the
+    server still reports the previous version (e.g. because the pull failed
+    or the new release cannot boot).
+  * The button is renamed to "Upgrade to latest release" and its
+    confirmation dialog points out that Immich runs its database
+    migrations on the first start and that they cannot be undone.
+    zh_CN/zh_TW translations updated.
+  * The new tag is written to the configuration database, so the settings
+    page shows a pending configuration change until Apply is clicked; the
+    stack itself is already upgraded by the background task.
+
+ -- fffeng99999 <fffeng99999@users.noreply.github.com>  Sun, 01 Nov 2026 17:10:00 +0800
+
 openmediavault-immich (8.0.11) stable; urgency=medium
 
   * External libraries: also mark the service dirty when a library entry

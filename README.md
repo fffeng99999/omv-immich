@@ -338,6 +338,24 @@ Immich 支持**原地读取**宿主机上已有的照片目录（不复制进上
 - **更新检测**：改用 GitHub releases 页重定向（`github.com/…/releases/latest` → `…/releases/tag/<tag>`）取最新**正式**版，替代被按 IP 限流的 `api.github.com`（限流时"最新版本"会显示为空）。页重定向自动跳过 draft/prerelease（RC）。
 - **栈文件位置**：设置页「存储器」区新增**只读**的 "Stack file (Compose plugin)"，展示 Compose 插件解析出的实际栈文件路径（= `<Compose 共享文件夹>/immich/immich.yml`）；该路径由 Compose 插件决定，不能在插件页更改。
 
+### 插件内升级（8.0.12 起）
+
+设置页的 **「升级到最新版本」** 按钮（旧名「升级」）在 8.0.11 及以前**根本升不上去**：
+
+- 旧实现只执行 `docker compose pull` + `up -d`；而版本标签默认是**固定的** `v3.2.4`，
+  固定标签每次 pull 都解析到同一个**本地已存在**的镜像 → 没有新镜像可拉、容器不重建、版本永远不变，
+  但状态区仍一直显示「有新版本可用」（检测走的是运行版本 vs GitHub 最新 tag）。
+- 8.0.12 起按钮的完整流程：取 `github.com/immich-app/immich/releases/latest` 的最新**正式** tag →
+  把固定的版本标签推进到该 tag 并写入配置库 → 重新发布栈（Compose 插件**立即**重渲染
+  `immich.yml`/`immich.env` 里的 `IMMICH_VERSION`）→ 后台任务 `pull` + `up -d` 重建容器 →
+  输出里打印「版本标签 / 目标版本 / 升级前后运行版本」，版本没变会给出 WARNING。
+- **浮动标签**（如 `release`）不会被改写——它本来就在每次 pull 时跟随最新正式版。
+- 升级完成后设置页会有 pending 变更提示，点 **应用** 即可清掉（栈此时已升级完毕，Apply 只是幂等的 `up -d`）。
+- **失败与回滚**：pull 失败或新版本起不来时任务输出会 WARNING / 报错；回滚把版本标签改回旧 tag 再应用即可
+  （旧镜像仍在本地）。但 **Immich 的数据库迁移是单向的**——大版本升级前务必先备份数据库并读上游发布说明。
+- **已知限制**：`redis`（valkey:9）与 `database`（postgres 14-vectorchord…）镜像仍由插件固定
+  （上游 3.2.4 → 3.3.5 未变）；若将来上游更换数据库镜像，需要插件自身发版。
+
 ### 升级到 8.0.7（栈改由 omv-compose 托管）
 
 8.0.6 及以前，插件把 `.env` + `docker-compose.yml` 自己渲染到一个「栈文件」共享文件夹；8.0.7 起取消该字段，
